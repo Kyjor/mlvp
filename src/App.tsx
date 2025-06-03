@@ -1,454 +1,214 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import "./App.css";
-import { SubtitleTrack, SubtitleCue } from "./types";
-import { convertAssToVtt, convertSrtToVtt } from "./utils/subtitleConverter";
-import { parseVttContent, getActiveCues } from "./utils/subtitleParser";
 import { useSubtitleCustomization } from "./hooks/useSubtitleCustomization";
-import { SubtitleOverlay } from "./components/SubtitleOverlay";
-import { SubtitleControls } from "./components/SubtitleControls";
+import { isVideoFile, isSubtitleFile } from "./utils/fileUtils";
+import { useVideoPlayer } from "./hooks/useVideoPlayer";
+import { useSubtitleManager } from "./hooks/useSubtitleManager";
+import { FileDropZone } from "./components/FileDropZone";
+import { VideoDisplayArea } from "./components/VideoDisplayArea";
+import { YouTubeSubtitlePanel } from "./components/YouTubeSubtitlePanel";
 
 function App() {
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSubtitleDragOver, setIsSubtitleDragOver] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [fileName, setFileName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
-  const [videoError, setVideoError] = useState<string | null>(null);
-  const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
-  const [activeSubtitle, setActiveSubtitle] = useState<string | null>(null);
-  const [currentCues, setCurrentCues] = useState<SubtitleCue[]>([]);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [subtitleData, setSubtitleData] = useState<Map<string, SubtitleCue[]>>(new Map());
   const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const subtitleInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const {
-    subtitlePosition,
-    subtitleSize,
-    isDraggingSubtitle,
-    subtitleRef,
-    videoWrapperRef,
-    handleSubtitleMouseDown,
-    handleSubtitleWheel,
-    resetPosition,
-    resetSize
-  } = useSubtitleCustomization();
+  const videoPlayerHook = useVideoPlayer();
+  const subtitleManagerHook = useSubtitleManager(videoPlayerHook.currentTime);
+  const subtitleCustomizationHook = useSubtitleCustomization();
 
-  // Video file extensions that we want to support
-  const supportedVideoExtensions = [
-    '.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.m4v', '.3gp', '.flv', '.wmv'
-  ];
+  const clearAll = useCallback(() => {
+    videoPlayerHook.resetVideoState();
+    subtitleManagerHook.resetSubtitleState();
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (subtitleInputRef.current) subtitleInputRef.current.value = '';
+    setIsLoading(false);
+    setLoadingMessage("");
+  }, [videoPlayerHook, subtitleManagerHook]);
 
-  // Subtitle file extensions
-  const supportedSubtitleExtensions = [
-    '.srt', '.vtt', '.ass', '.ssa', '.sub'
-  ];
-
-  const isVideoFile = (file: File) => {
-    if (file.type.startsWith('video/')) {
-      return true;
-    }
-    const fileName = file.name.toLowerCase();
-    return supportedVideoExtensions.some(ext => fileName.endsWith(ext));
-  };
-
-  const isSubtitleFile = (file: File) => {
-    const fileName = file.name.toLowerCase();
-    return supportedSubtitleExtensions.some(ext => fileName.endsWith(ext));
-  };
-
-  // Process subtitle file
-  const processSubtitleFile = async (file: File): Promise<SubtitleTrack> => {
-    console.log('Processing subtitle file:', file.name);
-    const content = await file.text();
-    const fileName = file.name;
-    const extension = fileName.toLowerCase().split('.').pop();
-    
-    let vttContent = content;
-    
-    if (extension === 'srt') {
-      vttContent = convertSrtToVtt(content);
-    } else if (extension === 'ass' || extension === 'ssa') {
-      vttContent = convertAssToVtt(content);
-    } else if (extension !== 'vtt') {
-      vttContent = convertSrtToVtt(content); // Basic fallback
-    }
-    
-    if (!vttContent.startsWith('WEBVTT')) {
-      vttContent = 'WEBVTT\n\n' + vttContent;
-    }
-    
-    const cues = parseVttContent(vttContent);
-    console.log('Parsed subtitle cues:', cues.length);
-    
-    const trackId = `subtitle-${Date.now()}-${Math.random()}`;
-    
-    setSubtitleData(prev => new Map(prev.set(trackId, cues)));
-    
-    const vttDataUrl = `data:text/vtt;charset=utf-8,${encodeURIComponent(vttContent)}`;
-    
-    console.log('Created subtitle track with', cues.length, 'cues:', fileName);
-    
-    return {
-      id: trackId,
-      label: fileName.replace(/\.[^/.]+$/, ""),
-      src: vttDataUrl,
-      default: subtitleTracks.length === 0
-    };
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleMainDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleMainDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleMainDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    setIsLoading(true);
     
     const files = Array.from(e.dataTransfer.files);
-    const videoFile = files.find(file => isVideoFile(file));
-    const subtitleFiles = files.filter(file => isSubtitleFile(file));
-    
+    const videoFile = files.find(isVideoFile);
+    const subtitleFiles = files.filter(isSubtitleFile);
+
     if (videoFile) {
-      processVideoFile(videoFile);
+      setLoadingMessage("Loading video...");
+      await videoPlayerHook.processVideoFile(videoFile);
     }
     
     if (subtitleFiles.length > 0) {
-      processSubtitleFiles(subtitleFiles);
+      setLoadingMessage("Processing subtitles...");
+      await subtitleManagerHook.addSubtitleFiles(subtitleFiles);
     }
+    setIsLoading(false);
+    setLoadingMessage("");
+  };
+  
+  const handleMainFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setIsLoading(true);
+    const videoFile = files.find(isVideoFile);
+    const subtitleFiles = files.filter(isSubtitleFile);
+
+    if (videoFile) {
+      setLoadingMessage("Loading video...");
+      await videoPlayerHook.processVideoFile(videoFile);
+    }
+    if (subtitleFiles.length > 0) {
+      setLoadingMessage("Processing subtitles...");
+      await subtitleManagerHook.addSubtitleFiles(subtitleFiles);
+    }
+    setIsLoading(false);
+    setLoadingMessage("");
+    if(e.target) e.target.value = ''
   };
 
-  const handleSubtitleDragOver = (e: React.DragEvent) => {
+  const handleDedicatedSubtitleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsSubtitleDragOver(true);
   };
 
-  const handleSubtitleDragLeave = (e: React.DragEvent) => {
+  const handleDedicatedSubtitleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsSubtitleDragOver(false);
   };
 
-  const handleSubtitleDrop = (e: React.DragEvent) => {
+  const handleDedicatedSubtitleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsSubtitleDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    const subtitleFiles = files.filter(file => isSubtitleFile(file));
-    
-    if (subtitleFiles.length > 0) {
-      processSubtitleFiles(subtitleFiles);
-    }
-  };
-
-  const handleSubtitleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const subtitleFiles = files.filter(file => isSubtitleFile(file));
-    
-    if (subtitleFiles.length > 0) {
-      processSubtitleFiles(subtitleFiles);
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const videoFile = files.find(file => isVideoFile(file));
-    const subtitleFiles = files.filter(file => isSubtitleFile(file));
-    
-    if (videoFile) {
-      processVideoFile(videoFile);
-    }
-    
-    if (subtitleFiles.length > 0) {
-      processSubtitleFiles(subtitleFiles);
-    }
-  };
-
-  const processSubtitleFiles = async (files: File[]) => {
     setIsLoading(true);
-    setLoadingMessage("Processing subtitle files...");
+    setLoadingMessage("Processing subtitles...");
     
-    try {
-      const newTracks: SubtitleTrack[] = [];
-      
-      for (const file of files) {
-        const track = await processSubtitleFile(file);
-        newTracks.push(track);
-      }
-      
-      setSubtitleTracks(prev => [...prev, ...newTracks]);
-      
-      if (!activeSubtitle && newTracks.length > 0) {
-        setActiveSubtitle(newTracks[0].id);
-      }
-      
-      setLoadingMessage("");
-    } catch (error) {
-      console.error("Failed to process subtitle files:", error);
-      setVideoError("Failed to process subtitle files");
-    } finally {
-      setIsLoading(false);
+    const files = Array.from(e.dataTransfer.files).filter(isSubtitleFile);
+    if (files.length > 0) {
+      await subtitleManagerHook.addSubtitleFiles(files);
     }
-  };
-
-  const processVideoFile = async (file: File) => {
-    setIsLoading(true);
-    setLoadingMessage("Loading video...");
-    setVideoError(null);
-    
-    try {
-      const url = URL.createObjectURL(file);
-      setVideoUrl(url);
-      setFileName(file.name);
-      setIsPlaying(false);
-      
-      setIsLoading(false);
-      setLoadingMessage("");
-      
-    } catch (error) {
-      console.error("Failed to process video:", error);
-      setVideoError("Failed to load video file");
-      setIsLoading(false);
-    }
-  };
-
-  const clearVideo = () => {
-    if (videoUrl) {
-      URL.revokeObjectURL(videoUrl);
-    }
-    
-    setVideoUrl(null);
-    setFileName("");
-    setIsPlaying(false);
     setIsLoading(false);
     setLoadingMessage("");
-    setVideoError(null);
-    setSubtitleTracks([]);
-    setActiveSubtitle(null);
-    setCurrentCues([]);
-    setSubtitleData(new Map());
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    if (subtitleInputRef.current) {
-      subtitleInputRef.current.value = '';
-    }
   };
 
-  const removeSubtitle = (trackId: string) => {
-    setSubtitleTracks(prev => prev.filter(track => track.id !== trackId));
-    setSubtitleData(prev => {
-      const newMap = new Map(prev);
-      newMap.delete(trackId);
-      return newMap;
-    });
-    
-    if (activeSubtitle === trackId) {
-      const remainingTracks = subtitleTracks.filter(track => track.id !== trackId);
-      setActiveSubtitle(remainingTracks.length > 0 ? remainingTracks[0].id : null);
-    }
-  };
+  const handleDedicatedSubtitleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter(isSubtitleFile);
+    if (files.length === 0) return;
 
-  const toggleSubtitle = (trackId: string | null) => {
-    setActiveSubtitle(trackId);
-  };
-
-  const togglePlayPause = () => {
-    setIsPlaying(!isPlaying);
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play().catch(console.error);
-      }
-    }
+    setIsLoading(true);
+    setLoadingMessage("Processing subtitles...");
+    await subtitleManagerHook.addSubtitleFiles(files);
+    setIsLoading(false);
+    setLoadingMessage("");
+    if(e.target) e.target.value = ''
   };
 
   useEffect(() => {
-    if (activeSubtitle && subtitleData.has(activeSubtitle)) {
-      const cues = subtitleData.get(activeSubtitle)!;
-      const activeCues = getActiveCues(cues, currentTime);
-      setCurrentCues(activeCues);
-    } else {
-      setCurrentCues([]);
-    }
-  }, [currentTime, activeSubtitle, subtitleData]);
-
-  const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
-    }
-  };
-
-  useEffect(() => {
+    const currentVideoUrl = videoPlayerHook.videoUrl;
     return () => {
-      if (videoUrl) {
-        URL.revokeObjectURL(videoUrl);
+      if (currentVideoUrl) {
+        URL.revokeObjectURL(currentVideoUrl);
       }
     };
-  }, [videoUrl]);
+  }, [videoPlayerHook.videoUrl]);
 
   return (
     <main className="container">
       <h1>Video Player</h1>
       
-      {isLoading ? (
+      {isLoading && (
         <div className="loading-container">
           <div className="loading-content">
             <div className="loading-spinner"></div>
             <p className="loading-message">{loadingMessage}</p>
           </div>
         </div>
-      ) : videoError ? (
+      )}
+      
+      {videoPlayerHook.videoError && !isLoading && (
         <div className="error-container">
           <div className="error-content">
             <h3>⚠️ Playback Error</h3>
-            <p>{videoError}</p>
+            <p>{videoPlayerHook.videoError}</p>
             <p className="error-help">
               This video format may not be supported by your browser. 
               Try converting it to MP4 format for better compatibility.
             </p>
-            <button onClick={clearVideo} className="error-button">
+            <button onClick={clearAll} className="error-button">
               Try Another Video
             </button>
           </div>
         </div>
-      ) : !videoUrl ? (
-        <div
-          className={`drop-zone ${isDragOver ? 'drag-over' : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <div className="drop-zone-content">
-            <p>Drag and drop video and subtitle files here</p>
-            <p>or click to select files</p>
-            <p className="supported-formats">
-              Videos: MP4, WebM, MKV, MOV, AVI, and more
-            </p>
-            <p className="supported-formats">
-              Subtitles: SRT, VTT, ASS, SSA, SUB
-            </p>
-            <p className="compatibility-note">
-              * Some formats may have limited browser support
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/*,.mkv,.srt,.vtt,.ass,.ssa,.sub"
-              multiple
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="video-container">
-          <div className="video-info">
-            <p>Playing: {fileName}</p>
-            {subtitleTracks.length > 0 && (
-              <p className="subtitle-info">
-                📝 {subtitleTracks.length} subtitle track(s) loaded
-              </p>
-            )}
-            {!isPlaying && (
-              <p className="playback-hint">
-                📹 Click the play button or use player controls to start
-              </p>
-            )}
-          </div>
-          
-          <div
-            className={`subtitle-drop-zone ${isSubtitleDragOver ? 'drag-over' : ''}`}
-            onDragOver={handleSubtitleDragOver}
-            onDragLeave={handleSubtitleDragLeave}
-            onDrop={handleSubtitleDrop}
-            onClick={() => subtitleInputRef.current?.click()}
-          >
-            <div className="subtitle-drop-content">
-              <span className="subtitle-drop-icon">📝</span>
-              <span className="subtitle-drop-text">
-                {isSubtitleDragOver 
-                  ? "Drop subtitle files here" 
-                  : "Drag subtitle files here or click to browse"
-                }
-              </span>
-              <span className="subtitle-formats">SRT, VTT, ASS, SSA, SUB</span>
-            </div>
-            <input
-              ref={subtitleInputRef}
-              type="file"
-              accept=".srt,.vtt,.ass,.ssa,.sub"
-              multiple
-              onChange={handleSubtitleFileSelect}
-              style={{ display: 'none' }}
-            />
-          </div>
-          
-          <SubtitleControls 
-            subtitleTracks={subtitleTracks}
-            activeSubtitle={activeSubtitle}
-            subtitlePosition={subtitlePosition}
-            subtitleSize={subtitleSize}
-            onToggleSubtitle={toggleSubtitle}
-            onRemoveSubtitle={removeSubtitle}
-            onResetPosition={resetPosition}
-            onResetSize={resetSize}
+      )}
+      
+      {!videoPlayerHook.videoUrl && !isLoading && !videoPlayerHook.videoError && (
+        <FileDropZone 
+          isDragOver={isDragOver}
+          onDragOver={handleMainDragOver}
+          onDragLeave={handleMainDragLeave}
+          onDrop={handleMainDrop}
+          onFileInputClick={() => fileInputRef.current?.click()}
+          fileInputRef={fileInputRef}
+          onFileSelect={handleMainFileSelect}
+        />
+      )}
+      
+      {videoPlayerHook.videoUrl && !videoPlayerHook.videoError && !isLoading && (
+        <>
+          <VideoDisplayArea 
+            videoUrl={videoPlayerHook.videoUrl}
+            fileName={videoPlayerHook.fileName}
+            isPlaying={videoPlayerHook.isPlaying}
+            subtitleTracks={subtitleManagerHook.subtitleTracks}
+            activeSubtitle={subtitleManagerHook.activeSubtitle}
+            currentCues={subtitleManagerHook.currentCues}
+            subtitlePosition={subtitleCustomizationHook.subtitlePosition}
+            subtitleSize={subtitleCustomizationHook.subtitleSize}
+            isDraggingSubtitle={subtitleCustomizationHook.isDraggingSubtitle}
+            isSubtitleDragOver={isSubtitleDragOver}
+            videoRef={videoPlayerHook.videoRef}
+            videoWrapperRef={subtitleCustomizationHook.videoWrapperRef}
+            subtitleRef={subtitleCustomizationHook.subtitleRef}
+            subtitleInputRef={subtitleInputRef}
+            onPlayPauseChange={videoPlayerHook.setIsPlaying}
+            onTimeUpdate={videoPlayerHook.handleTimeUpdate}
+            onToggleActiveSubtitle={subtitleManagerHook.toggleActiveSubtitle}
+            onRemoveSubtitleTrack={subtitleManagerHook.removeSubtitleTrack}
+            onResetSubtitlePosition={subtitleCustomizationHook.resetPosition}
+            onResetSubtitleSize={subtitleCustomizationHook.resetSize}
+            onSubtitleMouseDown={subtitleCustomizationHook.handleSubtitleMouseDown}
+            onSubtitleWheel={subtitleCustomizationHook.handleSubtitleWheel}
+            onDedicatedSubtitleDragOver={handleDedicatedSubtitleDragOver}
+            onDedicatedSubtitleDragLeave={handleDedicatedSubtitleDragLeave}
+            onDedicatedSubtitleDrop={handleDedicatedSubtitleDrop}
+            onDedicatedSubtitleFileSelect={handleDedicatedSubtitleFileSelect}
           />
           
-          <div className="video-player-container">
-            <div 
-              className="video-wrapper"
-              ref={videoWrapperRef}
-            >
-              <video
-                ref={videoRef}
-                src={videoUrl}
-                controls
-                width="100%"
-                height="auto"
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onTimeUpdate={handleTimeUpdate}
-                onLoadedMetadata={() => {
-                  console.log('Video loaded');
-                }}
-                crossOrigin="anonymous"
-              >
-                Your browser does not support the video tag.
-              </video>
-              
-              <SubtitleOverlay
-                currentCues={currentCues}
-                subtitlePosition={subtitlePosition}
-                subtitleSize={subtitleSize}
-                isDraggingSubtitle={isDraggingSubtitle}
-                subtitleRef={subtitleRef}
-                onMouseDown={handleSubtitleMouseDown}
-                onWheel={handleSubtitleWheel}
-              />
-            </div>
-          </div>
-          
           <div className="video-controls">
-            <button onClick={togglePlayPause}>
-              {isPlaying ? 'Pause' : 'Play'}
+            <button onClick={videoPlayerHook.togglePlayPause}>
+              {videoPlayerHook.isPlaying ? 'Pause' : 'Play'}
             </button>
             <button onClick={() => setShowSubtitlePanel(!showSubtitlePanel)}>
               Subtitles/CC
             </button>
-            <button onClick={clearVideo}>Clear Video</button>
+            <button onClick={clearAll}>Clear Video</button>
           </div>
           
           {showSubtitlePanel && (
@@ -464,25 +224,25 @@ function App() {
                 <span className="ytp-panel-title">Subtitles/CC</span>
                 <button className="ytp-button ytp-panel-options">Options</button>
               </div>
-              <div className="ytp-panel-menu" role="menu" style={{ height: `${Math.max(97, (subtitleTracks.length + 1) * 48)}px` }}>
+              <div className="ytp-panel-menu" role="menu" style={{ height: `${Math.max(97, (subtitleManagerHook.subtitleTracks.length + 1) * 48)}px` }}>
                 <div 
                   className="ytp-menuitem" 
                   tabIndex={0} 
                   role="menuitemradio" 
-                  aria-checked={!activeSubtitle}
-                  onClick={() => toggleSubtitle(null)}
+                  aria-checked={!subtitleManagerHook.activeSubtitle}
+                  onClick={() => subtitleManagerHook.toggleActiveSubtitle(null)}
                 >
                   <div className="ytp-menuitem-label">Off</div>
                 </div>
                 
-                {subtitleTracks.map(track => (
+                {subtitleManagerHook.subtitleTracks.map(track => (
                   <div 
                     key={track.id}
                     className="ytp-menuitem" 
                     tabIndex={0} 
                     role="menuitemradio" 
-                    aria-checked={activeSubtitle === track.id}
-                    onClick={() => toggleSubtitle(track.id)}
+                    aria-checked={subtitleManagerHook.activeSubtitle === track.id}
+                    onClick={() => subtitleManagerHook.toggleActiveSubtitle(track.id)}
                   >
                     <div className="ytp-menuitem-label">{track.label}</div>
                   </div>
@@ -495,7 +255,7 @@ function App() {
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
     </main>
   );
