@@ -29,9 +29,19 @@ function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [subtitleData, setSubtitleData] = useState<Map<string, SubtitleCue[]>>(new Map());
   const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
+  
+  // Subtitle customization states
+  const [subtitlePosition, setSubtitlePosition] = useState({ x: 50, y: 85 }); // Percentage positions
+  const [subtitleSize, setSubtitleSize] = useState(100); // Percentage scale
+  const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
+  const [initialSubtitlePos, setInitialSubtitlePos] = useState({ x: 0, y: 0 });
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const subtitleInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const subtitleRef = useRef<HTMLDivElement>(null);
+  const videoWrapperRef = useRef<HTMLDivElement>(null);
 
   // Video file extensions that we want to support
   const supportedVideoExtensions = [
@@ -470,6 +480,77 @@ function App() {
     }
   };
 
+  // Subtitle interaction handlers
+  const handleSubtitleMouseDown = (e: React.MouseEvent) => {
+    if (subtitleRef.current && videoWrapperRef.current) {
+      e.preventDefault();
+      setIsDraggingSubtitle(true);
+      setDragStartPos({ x: e.clientX, y: e.clientY });
+      setInitialSubtitlePos({ x: subtitlePosition.x, y: subtitlePosition.y });
+    }
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDraggingSubtitle && videoWrapperRef.current) {
+      const deltaX = e.clientX - dragStartPos.x;
+      const deltaY = e.clientY - dragStartPos.y;
+      
+      // Check if Control key is held for position moving
+      if (e.ctrlKey) {
+        // Position movement (existing behavior)
+        const rect = videoWrapperRef.current.getBoundingClientRect();
+        const deltaXPercent = (deltaX / rect.width) * 100;
+        const deltaYPercent = (deltaY / rect.height) * 100;
+        
+        const newX = Math.max(0, Math.min(100, initialSubtitlePos.x + deltaXPercent));
+        const newY = Math.max(0, Math.min(100, initialSubtitlePos.y + deltaYPercent));
+        
+        setSubtitlePosition({ x: newX, y: newY });
+      } else {
+        // Size adjustment based on drag direction
+        // Up/Right = bigger, Down/Left = smaller
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const direction = deltaX + (-deltaY); // Up and Right are positive
+        
+        // Scale factor based on distance and direction
+        const scaleFactor = distance * 0.2; // Adjust sensitivity
+        const sizeChange = direction > 0 ? scaleFactor : -scaleFactor;
+        
+        // Apply size change from initial size (100%)
+        const newSize = Math.max(50, Math.min(200, 100 + sizeChange));
+        setSubtitleSize(newSize);
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingSubtitle(false);
+  };
+
+  const handleSubtitleWheel = (e: React.WheelEvent) => {
+    // Only resize if Control key is held
+    if (e.ctrlKey) {
+      e.preventDefault();
+      const delta = -e.deltaY; // Invert for natural scroll behavior
+      const sizeChange = delta > 0 ? 5 : -5;
+      const newSize = Math.max(50, Math.min(200, subtitleSize + sizeChange));
+      setSubtitleSize(newSize);
+    }
+  };
+
+  // Event listeners for mouse movement and release
+  useEffect(() => {
+    if (isDraggingSubtitle) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDraggingSubtitle, dragStartPos, initialSubtitlePos]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -594,6 +675,44 @@ function App() {
                   ))}
                 </select>
               </div>
+              
+              {/* Subtitle customization panel */}
+              {activeSubtitle && (
+                <div className="subtitle-customization">
+                  <div className="customization-header">
+                    <span>📐 Subtitle Position & Size</span>
+                  </div>
+                  <div className="customization-controls">
+                    <div className="control-group">
+                      <label>Position: {subtitlePosition.x.toFixed(0)}%, {subtitlePosition.y.toFixed(0)}%</label>
+                      <button 
+                        className="reset-btn"
+                        onClick={() => setSubtitlePosition({ x: 50, y: 85 })}
+                        title="Reset position to center bottom"
+                      >
+                        Reset Position
+                      </button>
+                    </div>
+                    <div className="control-group">
+                      <label>Size: {subtitleSize}%</label>
+                      <button 
+                        className="reset-btn"
+                        onClick={() => setSubtitleSize(100)}
+                        title="Reset size to 100%"
+                      >
+                        Reset Size
+                      </button>
+                    </div>
+                  </div>
+                  <div className="control-instructions">
+                    <p>💡 <strong>Drag Up/Right</strong> to make subtitles bigger</p>
+                    <p>💡 <strong>Drag Down/Left</strong> to make subtitles smaller</p>
+                    <p>💡 <strong>Ctrl + Drag</strong> to move subtitles</p>
+                    <p>💡 <strong>Ctrl + Scroll</strong> to resize precisely</p>
+                  </div>
+                </div>
+              )}
+              
               <div className="subtitle-list">
                 {subtitleTracks.map(track => (
                   <div key={track.id} className="subtitle-item">
@@ -612,7 +731,10 @@ function App() {
           )}
           
           <div className="video-player-container">
-            <div className="video-wrapper">
+            <div 
+              className="video-wrapper"
+              ref={videoWrapperRef}
+            >
               <video
                 ref={videoRef}
                 src={videoUrl}
@@ -632,9 +754,28 @@ function App() {
               
               {/* YouTube-style subtitle overlay */}
               {currentCues.length > 0 && (
-                <div className="subtitle-overlay-container">
+                <div 
+                  className="subtitle-overlay-container"
+                  style={{
+                    position: 'absolute',
+                    left: `${subtitlePosition.x}%`,
+                    top: `${subtitlePosition.y}%`,
+                    transform: 'translate(-50%, -50%)',
+                    cursor: isDraggingSubtitle ? 'grabbing' : 'grab',
+                    userSelect: 'none'
+                  }}
+                  ref={subtitleRef}
+                  onMouseDown={handleSubtitleMouseDown}
+                  onWheel={handleSubtitleWheel}
+                >
                   <div className="subtitle-window">
-                    <div className="subtitle-content">
+                    <div 
+                      className="subtitle-content"
+                      style={{
+                        transform: `scale(${subtitleSize / 100})`,
+                        transformOrigin: 'center center'
+                      }}
+                    >
                       {currentCues.map((cue, index) => (
                         <div key={index} className="subtitle-line">
                           {cue.text.split('\n').map((line, lineIndex) => (
@@ -646,6 +787,13 @@ function App() {
                       ))}
                     </div>
                   </div>
+                  
+                  {/* Visual feedback for control hints */}
+                  {isDraggingSubtitle && (
+                    <div className="subtitle-drag-hint">
+                      Dragging subtitle...
+                    </div>
+                  )}
                 </div>
               )}
             </div>

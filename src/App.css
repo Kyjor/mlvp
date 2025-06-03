@@ -253,48 +253,69 @@ button {
 
 .video-wrapper {
   position: relative;
+  display: inline-block;
   width: 100%;
+  overflow: hidden;
 }
 
 .video-player-container {
-  position: relative;
-  width: 100%;
-  background: #000;
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
 }
 
 .video-player-container video {
-  width: 100%;
+  max-width: 100%;
   height: auto;
-  display: block;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle-overlay-container {
+  position: absolute;
+  pointer-events: auto;
+  z-index: 10;
+  /* Dynamic positioning via inline styles */
+}
+
+.subtitle-overlay-container:hover {
+  opacity: 0.9;
+}
+
+.subtitle-drag-hint {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* YouTube-style subtitle overlay */
-.subtitle-overlay-container {
-  position: absolute;
-  bottom: 2%;
-  left: 21.2%;
-  width: auto;
-  max-width: 57.6%; /* Roughly 422px on a 720p video */
-  pointer-events: none;
-  z-index: 10;
-}
-
 .subtitle-window {
   position: relative;
-  width: 100%;
+  width: auto;
+  display: inline-block;
   text-align: left;
-  overflow: hidden;
+  overflow: visible;
   touch-action: none;
 }
 
 .subtitle-content {
-  display: block;
+  display: inline-block;
   overflow-wrap: normal;
+  white-space: normal;
 }
 
 .subtitle-line {
   display: block;
   margin-bottom: 2px;
+  white-space: normal;
 }
 
 .subtitle-segment {
@@ -573,7 +594,8 @@ button {
 }
 
 .remove-subtitle:hover {
-  background-color: rgba(220, 53, 69, 0.1);
+  background-color: #ff6b6b;
+  color: white;
 }
 
 .playback-hint {
@@ -833,5 +855,109 @@ button {
 @media (prefers-color-scheme: dark) {
   .ytp-panel {
     background: rgba(28, 28, 28, 0.95);
+  }
+}
+
+.subtitle-customization {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+}
+
+.customization-header {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.customization-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.control-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.control-group label {
+  font-size: 0.9em;
+  color: #555;
+  font-family: monospace;
+}
+
+.reset-btn {
+  background: #e9ecef;
+  border: 1px solid #ced4da;
+  color: #495057;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reset-btn:hover {
+  background: #dee2e6;
+  border-color: #adb5bd;
+}
+
+.control-instructions {
+  border-top: 1px solid #e9ecef;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.control-instructions p {
+  margin: 4px 0;
+  font-size: 0.85em;
+  color: #666;
+}
+
+.control-instructions strong {
+  color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+  .subtitle-customization {
+    background: #2d3139;
+    border-color: #495057;
+  }
+  
+  .customization-header {
+    color: #f8f9fa;
+  }
+  
+  .control-group label {
+    color: #adb5bd;
+  }
+  
+  .reset-btn {
+    background: #495057;
+    border-color: #6c757d;
+    color: #f8f9fa;
+  }
+  
+  .reset-btn:hover {
+    background: #5a6268;
+    border-color: #7a8288;
+  }
+  
+  .control-instructions {
+    border-top-color: #495057;
+  }
+  
+  .control-instructions p {
+    color: #adb5bd;
+  }
+  
+  .control-instructions strong {
+    color: #f8f9fa;
   }
 }
