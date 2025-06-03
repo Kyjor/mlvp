@@ -19,17 +19,27 @@ function App() {
   const subtitleInputRef = useRef<HTMLInputElement>(null);
 
   const videoPlayerHook = useVideoPlayer();
-  const subtitleManagerHook = useSubtitleManager(videoPlayerHook.currentTime);
+  const { 
+    subtitleTracks, 
+    activeSubtitle, 
+    currentCues, 
+    subtitleOffset,
+    addSubtitleFiles, 
+    removeSubtitleTrack, 
+    toggleActiveSubtitle, 
+    updateSubtitleOffset,
+    resetSubtitleState 
+  } = useSubtitleManager(videoPlayerHook.currentTime);
   const subtitleCustomizationHook = useSubtitleCustomization();
 
   const clearAll = useCallback(() => {
     videoPlayerHook.resetVideoState();
-    subtitleManagerHook.resetSubtitleState();
+    resetSubtitleState();
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (subtitleInputRef.current) subtitleInputRef.current.value = '';
     setIsLoading(false);
     setLoadingMessage("");
-  }, [videoPlayerHook, subtitleManagerHook]);
+  }, [videoPlayerHook, resetSubtitleState]);
 
   const handleMainDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -57,7 +67,7 @@ function App() {
     
     if (subtitleFiles.length > 0) {
       setLoadingMessage("Processing subtitles...");
-      await subtitleManagerHook.addSubtitleFiles(subtitleFiles);
+      await addSubtitleFiles(subtitleFiles);
     }
     setIsLoading(false);
     setLoadingMessage("");
@@ -77,7 +87,7 @@ function App() {
     }
     if (subtitleFiles.length > 0) {
       setLoadingMessage("Processing subtitles...");
-      await subtitleManagerHook.addSubtitleFiles(subtitleFiles);
+      await addSubtitleFiles(subtitleFiles);
     }
     setIsLoading(false);
     setLoadingMessage("");
@@ -102,7 +112,7 @@ function App() {
     
     const files = Array.from(e.dataTransfer.files).filter(isSubtitleFile);
     if (files.length > 0) {
-      await subtitleManagerHook.addSubtitleFiles(files);
+      await addSubtitleFiles(files);
     }
     setIsLoading(false);
     setLoadingMessage("");
@@ -114,7 +124,7 @@ function App() {
 
     setIsLoading(true);
     setLoadingMessage("Processing subtitles...");
-    await subtitleManagerHook.addSubtitleFiles(files);
+    await addSubtitleFiles(files);
     setIsLoading(false);
     setLoadingMessage("");
     if(e.target) e.target.value = ''
@@ -176,9 +186,9 @@ function App() {
             videoUrl={videoPlayerHook.videoUrl}
             fileName={videoPlayerHook.fileName}
             isPlaying={videoPlayerHook.isPlaying}
-            subtitleTracks={subtitleManagerHook.subtitleTracks}
-            activeSubtitle={subtitleManagerHook.activeSubtitle}
-            currentCues={subtitleManagerHook.currentCues}
+            subtitleTracks={subtitleTracks}
+            activeSubtitle={activeSubtitle}
+            currentCues={currentCues}
             subtitlePosition={subtitleCustomizationHook.subtitlePosition}
             subtitleSize={subtitleCustomizationHook.subtitleSize}
             isDraggingSubtitle={subtitleCustomizationHook.isDraggingSubtitle}
@@ -189,8 +199,8 @@ function App() {
             subtitleInputRef={subtitleInputRef}
             onPlayPauseChange={videoPlayerHook.setIsPlaying}
             onTimeUpdate={videoPlayerHook.handleTimeUpdate}
-            onToggleActiveSubtitle={subtitleManagerHook.toggleActiveSubtitle}
-            onRemoveSubtitleTrack={subtitleManagerHook.removeSubtitleTrack}
+            onToggleActiveSubtitle={toggleActiveSubtitle}
+            onRemoveSubtitleTrack={removeSubtitleTrack}
             onResetSubtitlePosition={subtitleCustomizationHook.resetPosition}
             onResetSubtitleSize={subtitleCustomizationHook.resetSize}
             onSubtitleMouseDown={subtitleCustomizationHook.handleSubtitleMouseDown}
@@ -199,6 +209,8 @@ function App() {
             onDedicatedSubtitleDragLeave={handleDedicatedSubtitleDragLeave}
             onDedicatedSubtitleDrop={handleDedicatedSubtitleDrop}
             onDedicatedSubtitleFileSelect={handleDedicatedSubtitleFileSelect}
+            subtitleOffset={subtitleOffset}
+            onOffsetChange={updateSubtitleOffset}
           />
           
           <div className="video-controls">
@@ -224,25 +236,25 @@ function App() {
                 <span className="ytp-panel-title">Subtitles/CC</span>
                 <button className="ytp-button ytp-panel-options">Options</button>
               </div>
-              <div className="ytp-panel-menu" role="menu" style={{ height: `${Math.max(97, (subtitleManagerHook.subtitleTracks.length + 1) * 48)}px` }}>
+              <div className="ytp-panel-menu" role="menu" style={{ height: `${Math.max(97, (subtitleTracks.length + 1) * 48)}px` }}>
                 <div 
                   className="ytp-menuitem" 
                   tabIndex={0} 
                   role="menuitemradio" 
-                  aria-checked={!subtitleManagerHook.activeSubtitle}
-                  onClick={() => subtitleManagerHook.toggleActiveSubtitle(null)}
+                  aria-checked={!activeSubtitle}
+                  onClick={() => toggleActiveSubtitle(null)}
                 >
                   <div className="ytp-menuitem-label">Off</div>
                 </div>
                 
-                {subtitleManagerHook.subtitleTracks.map(track => (
+                {subtitleTracks.map(track => (
                   <div 
                     key={track.id}
                     className="ytp-menuitem" 
                     tabIndex={0} 
                     role="menuitemradio" 
-                    aria-checked={subtitleManagerHook.activeSubtitle === track.id}
-                    onClick={() => subtitleManagerHook.toggleActiveSubtitle(track.id)}
+                    aria-checked={activeSubtitle === track.id}
+                    onClick={() => toggleActiveSubtitle(track.id)}
                   >
                     <div className="ytp-menuitem-label">{track.label}</div>
                   </div>
@@ -255,6 +267,14 @@ function App() {
               </div>
             </div>
           )}
+          
+          <YouTubeSubtitlePanel 
+            isVisible={showSubtitlePanel}
+            subtitleTracks={subtitleTracks}
+            activeSubtitle={activeSubtitle}
+            onToggleSubtitle={toggleActiveSubtitle}
+            onClose={() => setShowSubtitlePanel(false)} 
+          />
         </>
       )}
     </main>

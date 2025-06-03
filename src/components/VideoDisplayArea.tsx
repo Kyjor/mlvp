@@ -14,6 +14,7 @@ interface VideoDisplayAreaProps {
   subtitleSize: number;
   isDraggingSubtitle: boolean;
   isSubtitleDragOver: boolean; 
+  subtitleOffset: number;
 
   videoRef: React.RefObject<HTMLVideoElement>;
   videoWrapperRef: React.RefObject<HTMLDivElement>;
@@ -32,6 +33,7 @@ interface VideoDisplayAreaProps {
   onDedicatedSubtitleDragLeave: (e: React.DragEvent) => void;
   onDedicatedSubtitleDrop: (e: React.DragEvent) => void;
   onDedicatedSubtitleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onOffsetChange: (newOffset: number) => void;
 }
 
 export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
@@ -45,6 +47,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   subtitleSize,
   isDraggingSubtitle,
   isSubtitleDragOver,
+  subtitleOffset,
   videoRef,
   videoWrapperRef,
   subtitleRef,
@@ -60,7 +63,8 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onDedicatedSubtitleDragOver,
   onDedicatedSubtitleDragLeave,
   onDedicatedSubtitleDrop,
-  onDedicatedSubtitleFileSelect
+  onDedicatedSubtitleFileSelect,
+  onOffsetChange
 }) => {
   if (!videoUrl) return null; // Should not happen if App.tsx logic is correct
 
@@ -112,10 +116,12 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
         activeSubtitle={activeSubtitle}
         subtitlePosition={subtitlePosition}
         subtitleSize={subtitleSize}
+        subtitleOffset={subtitleOffset}
         onToggleSubtitle={onToggleActiveSubtitle} 
         onRemoveSubtitle={onRemoveSubtitleTrack} 
         onResetPosition={onResetSubtitlePosition} 
         onResetSize={onResetSubtitleSize} 
+        onOffsetChange={onOffsetChange}
       />
       
       <div className="video-player-container">

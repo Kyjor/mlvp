@@ -961,3 +961,156 @@ button {
     color: #f8f9fa;
   }
 }
+
+/* SubtitleTimingControl.css */
+.subtitle-timing-control {
+  background: #f0f0f0; /* Slightly different background */
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+}
+
+.timing-header {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.timing-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.offset-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.offset-input-group label {
+  font-size: 0.9em;
+  color: #555;
+  white-space: nowrap;
+}
+
+.offset-input {
+  width: 70px; /* Adjust as needed */
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9em;
+  text-align: right;
+}
+
+.offset-buttons {
+  display: flex;
+  justify-content: space-between; /* Distribute buttons evenly */
+  gap: 5px; /* Small gap between buttons */
+}
+
+.offset-buttons button {
+  flex-grow: 1; /* Allow buttons to grow and fill space */
+  background: #e9ecef;
+  border: 1px solid #ced4da;
+  color: #495057;
+  padding: 6px 0; /* Adjust padding for smaller buttons */
+  font-size: 0.85em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.offset-buttons button:hover {
+  background: #dee2e6;
+  border-color: #adb5bd;
+}
+
+/* Dark mode styles for timing control */
+@media (prefers-color-scheme: dark) {
+  .subtitle-timing-control {
+    background: #3a3f47; /* Darker background */
+    border-color: #505863;
+  }
+  
+  .timing-header {
+    color: #e0e0e0;
+  }
+  
+  .offset-input-group label {
+    color: #b0b0b0;
+  }
+  
+  .offset-input {
+    background-color: #2d3139;
+    border-color: #505863;
+    color: #e0e0e0;
+  }
+  
+  .offset-buttons button {
+    background: #495057;
+    border-color: #6c757d;
+    color: #f8f9fa;
+  }
+  
+  .offset-buttons button:hover {
+    background: #5a6268;
+    border-color: #7a8288;
+  }
+}
+
+.subtitle-list-container {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0; /* Separator line */
+}
+
+.list-header {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+/* Dark mode styles for timing control */
+@media (prefers-color-scheme: dark) {
+  .subtitle-timing-control {
+    background: #3a3f47; 
+    border-color: #505863;
+  }
+  
+  .timing-header {
+    color: #e0e0e0;
+  }
+  
+  .offset-input-group label {
+    color: #b0b0b0;
+  }
+  
+  .offset-input {
+    background-color: #2d3139;
+    border-color: #505863;
+    color: #e0e0e0;
+  }
+  
+  .offset-buttons button {
+    background: #495057;
+    border-color: #6c757d;
+    color: #f8f9fa;
+  }
+  
+  .offset-buttons button:hover {
+    background: #5a6268;
+    border-color: #7a8288;
+  }
+
+  .subtitle-list-container {
+    border-top-color: #505863; /* Darker separator */
+  }
+
+  .list-header {
+    color: #b0b0b0;
+  }
+}

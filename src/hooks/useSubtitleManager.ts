@@ -8,6 +8,7 @@ export const useSubtitleManager = (currentTime: number) => {
   const [activeSubtitle, setActiveSubtitle] = useState<string | null>(null);
   const [subtitleData, setSubtitleData] = useState<Map<string, SubtitleCue[]>>(new Map());
   const [currentCues, setCurrentCues] = useState<SubtitleCue[]>([]);
+  const [subtitleOffset, setSubtitleOffset] = useState<number>(0);
 
   const processSingleSubtitleFile = useCallback(async (file: File): Promise<SubtitleTrack> => {
     console.log('Processing subtitle file:', file.name);
@@ -44,7 +45,7 @@ export const useSubtitleManager = (currentTime: number) => {
       src: vttDataUrl,
       default: subtitleTracks.length === 0
     };
-  }, [subtitleTracks.length]); // Dependency on subtitleTracks.length for the 'default' property
+  }, [subtitleTracks.length]);
 
   const addSubtitleFiles = useCallback(async (files: File[]) => {
     const newTracks: SubtitleTrack[] = [];
@@ -54,7 +55,6 @@ export const useSubtitleManager = (currentTime: number) => {
         newTracks.push(track);
       } catch (error) {
         console.error("Failed to process subtitle file:", file.name, error);
-        // Optionally, notify the user about the failed file
       }
     }
     
@@ -64,7 +64,7 @@ export const useSubtitleManager = (currentTime: number) => {
         setActiveSubtitle(newTracks[0].id);
       }
     }
-    return newTracks; // Return new tracks for potential immediate use if needed
+    return newTracks;
   }, [processSingleSubtitleFile, activeSubtitle]);
 
   const removeSubtitleTrack = useCallback((trackId: string) => {
@@ -77,7 +77,6 @@ export const useSubtitleManager = (currentTime: number) => {
     
     if (activeSubtitle === trackId) {
       const remainingTracks = subtitleTracks.filter(track => track.id !== trackId);
-      // Check length AFTER filtering to correctly get the updated list
       setActiveSubtitle(remainingTracks.length > 1 ? remainingTracks.find(t => t.id !== trackId)?.id ?? null : null);
     }
   }, [activeSubtitle, subtitleTracks]);
@@ -89,29 +88,36 @@ export const useSubtitleManager = (currentTime: number) => {
   useEffect(() => {
     if (activeSubtitle && subtitleData.has(activeSubtitle)) {
       const cues = subtitleData.get(activeSubtitle)!;
-      const newActiveCues = getActiveCues(cues, currentTime);
+      const newActiveCues = getActiveCues(cues, currentTime - subtitleOffset);
       setCurrentCues(newActiveCues);
     } else {
       setCurrentCues([]);
     }
-  }, [currentTime, activeSubtitle, subtitleData]);
+  }, [currentTime, activeSubtitle, subtitleData, subtitleOffset]);
 
   const resetSubtitleState = useCallback(() => {
     setSubtitleTracks([]);
     setActiveSubtitle(null);
     setSubtitleData(new Map());
     setCurrentCues([]);
+    setSubtitleOffset(0);
+  }, []);
+
+  const updateSubtitleOffset = useCallback((newOffset: number) => {
+    setSubtitleOffset(newOffset);
   }, []);
 
   return {
     subtitleTracks,
     activeSubtitle,
     currentCues,
+    subtitleOffset,
     addSubtitleFiles,
     removeSubtitleTrack,
     toggleActiveSubtitle,
+    updateSubtitleOffset,
     resetSubtitleState,
-    setSubtitleTracks, // Exposing setters if App.tsx needs to manipulate directly (e.g. on clearVideo)
+    setSubtitleTracks,
     setActiveSubtitle,
     setSubtitleData,
     setCurrentCues
