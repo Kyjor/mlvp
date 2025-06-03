@@ -272,9 +272,14 @@ button {
 }
 
 .playback-hint {
-  color: #4ade80 !important;
-  background-color: #1a2e1a;
-  border-left-color: #4ade80;
+  color: #28a745 !important;
+  font-size: 0.85em !important;
+  font-weight: 500 !important;
+  margin-top: 8px !important;
+  background-color: #f8fff9;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border-left: 3px solid #28a745;
 }
 
 .video-js-container {
@@ -419,4 +424,133 @@ button {
   .error-help {
     color: #ccc !important;
   }
+}
+
+.subtitle-info {
+  color: #6f42c1 !important;
+  font-size: 0.85em !important;
+  font-weight: 500 !important;
+  margin: 5px 0 !important;
+}
+
+.subtitle-controls {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.subtitle-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.subtitle-selector label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9em;
+}
+
+.subtitle-selector select {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 0.9em;
+  min-width: 120px;
+}
+
+.subtitle-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subtitle-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #e9ecef;
+  padding: 6px 10px;
+  border-radius: 16px;
+  font-size: 0.85em;
+}
+
+.subtitle-name {
+  color: #495057;
+  font-weight: 500;
+}
+
+.remove-subtitle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8em;
+  padding: 2px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.remove-subtitle:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.playback-hint {
+  color: #4ade80 !important;
+  background-color: #1a2e1a;
+  border-left-color: #4ade80;
+}
+
+.subtitle-info {
+  color: #c084fc !important;
+}
+
+.subtitle-controls {
+  background-color: #404040;
+  border-bottom-color: #555;
+}
+
+.subtitle-selector label {
+  color: #f0f0f0;
+}
+
+.subtitle-selector select {
+  background-color: #2d2d2d;
+  border-color: #555;
+  color: #f0f0f0;
+}
+
+.subtitle-item {
+  background-color: #555;
+}
+
+.subtitle-name {
+  color: #e0e0e0;
+}
+
+.remove-subtitle:hover {
+  background-color: rgba(220, 53, 69, 0.2);
+}
+
+.video-container {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.video-player-container {
+  position: relative;
+  background-color: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video-player-container video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.react-player-container {
+  position: relative;
+  background-color: #000;
 }

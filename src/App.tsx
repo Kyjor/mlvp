@@ -1,29 +1,35 @@
 import { useState, useRef, useEffect } from "react";
-import ReactPlayer from "react-player";
-import videojs from "video.js";
-import "video.js/dist/video-js.css";
 import "./App.css";
+
+interface SubtitleTrack {
+  id: string;
+  label: string;
+  src: string;
+  default?: boolean;
+}
 
 function App() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [useVideoJs, setUseVideoJs] = useState(false);
   const [fileName, setFileName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
+  const [activeSubtitle, setActiveSubtitle] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<any>(null);
 
   // Video file extensions that we want to support
   const supportedVideoExtensions = [
     '.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.m4v', '.3gp', '.flv', '.wmv'
   ];
 
-  // Formats that typically work better with Video.js
-  const preferVideoJs = ['.mkv', '.avi', '.wmv', '.flv', '.mov'];
+  // Subtitle file extensions
+  const supportedSubtitleExtensions = [
+    '.srt', '.vtt', '.ass', '.ssa', '.sub'
+  ];
 
   const isVideoFile = (file: File) => {
     // Check MIME type first
@@ -36,9 +42,155 @@ function App() {
     return supportedVideoExtensions.some(ext => fileName.endsWith(ext));
   };
 
-  const shouldUseVideoJs = (fileName: string) => {
-    const lowerName = fileName.toLowerCase();
-    return preferVideoJs.some(ext => lowerName.endsWith(ext));
+  const isSubtitleFile = (file: File) => {
+    const fileName = file.name.toLowerCase();
+    return supportedSubtitleExtensions.some(ext => fileName.endsWith(ext));
+  };
+
+  // Convert ASS format to VTT format
+  const convertAssToVtt = (assContent: string): string => {
+    let vttContent = "WEBVTT\n\n";
+    
+    const lines = assContent.split('\n');
+    let inEventsSection = false;
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Check if we're in the Events section
+      if (trimmedLine === '[Events]') {
+        inEventsSection = true;
+        continue;
+      }
+      
+      // Stop processing if we hit another section
+      if (trimmedLine.startsWith('[') && trimmedLine !== '[Events]') {
+        inEventsSection = false;
+        continue;
+      }
+      
+      // Process dialogue lines
+      if (inEventsSection && trimmedLine.startsWith('Dialogue:')) {
+        const parts = trimmedLine.split(',');
+        
+        if (parts.length >= 10) {
+          // ASS format: Dialogue: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+          const startTime = parts[1].trim();
+          const endTime = parts[2].trim();
+          const text = parts.slice(9).join(',').trim();
+          
+          // Convert ASS time format (H:MM:SS.CC) to VTT format (HH:MM:SS.CCC)
+          const vttStartTime = convertAssTimeToVtt(startTime);
+          const vttEndTime = convertAssTimeToVtt(endTime);
+          
+          // Clean up text (remove ASS formatting tags)
+          const cleanText = cleanAssText(text);
+          
+          if (cleanText) {
+            vttContent += `${vttStartTime} --> ${vttEndTime}\n${cleanText}\n\n`;
+          }
+        }
+      }
+    }
+    
+    console.log('Converted ASS to VTT:', vttContent.substring(0, 500) + '...');
+    return vttContent;
+  };
+
+  // Convert ASS time format to VTT time format
+  const convertAssTimeToVtt = (assTime: string): string => {
+    // ASS format: H:MM:SS.CC (centiseconds)
+    // VTT format: HH:MM:SS.MMM (milliseconds)
+    
+    const timeParts = assTime.split(':');
+    if (timeParts.length !== 3) return assTime;
+    
+    const hours = timeParts[0].padStart(2, '0');
+    const minutes = timeParts[1];
+    const secondsParts = timeParts[2].split('.');
+    const seconds = secondsParts[0];
+    const centiseconds = secondsParts[1] || '00';
+    
+    // Convert centiseconds to milliseconds
+    const milliseconds = (parseInt(centiseconds) * 10).toString().padStart(3, '0');
+    
+    return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+  };
+
+  // Clean ASS text formatting
+  const cleanAssText = (text: string): string => {
+    return text
+      .replace(/\{[^}]*\}/g, '') // Remove formatting tags like {\an8}
+      .replace(/\\N/g, '\n') // Convert line breaks
+      .replace(/\\n/g, '\n') // Convert line breaks
+      .replace(/\\h/g, ' ') // Convert hard spaces
+      .trim();
+  };
+
+  // Convert SRT format to VTT format
+  const convertSrtToVtt = (srtContent: string): string => {
+    let vttContent = "WEBVTT\n\n";
+    
+    // Clean up the content and split by double newlines
+    const cleanContent = srtContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const blocks = cleanContent.split(/\n\s*\n/);
+    
+    blocks.forEach((block, index) => {
+      const lines = block.trim().split('\n');
+      if (lines.length >= 3) {
+        // Skip the subtitle number (first line)
+        const timeLine = lines[1];
+        const textLines = lines.slice(2);
+        
+        // Convert SRT time format (00:00:20,000 --> 00:00:24,400) to VTT format
+        const vttTimeLine = timeLine
+          .replace(/,/g, '.') // Replace comma with period in timestamps
+          .replace(/\s*-->\s*/g, ' --> '); // Ensure proper arrow format
+        
+        // Add the cue
+        vttContent += `${vttTimeLine}\n${textLines.join('\n')}\n\n`;
+      }
+    });
+    
+    console.log('Converted SRT to VTT:', vttContent.substring(0, 500) + '...');
+    return vttContent;
+  };
+
+  // Process subtitle file
+  const processSubtitleFile = async (file: File): Promise<SubtitleTrack> => {
+    console.log('Processing subtitle file:', file.name);
+    const content = await file.text();
+    const fileName = file.name;
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    let vttContent = content;
+    
+    // Convert non-VTT formats to VTT
+    if (extension === 'srt') {
+      vttContent = convertSrtToVtt(content);
+    } else if (extension === 'ass' || extension === 'ssa') {
+      vttContent = convertAssToVtt(content);
+    } else if (extension !== 'vtt') {
+      // For other formats, try to convert as SRT (basic fallback)
+      vttContent = convertSrtToVtt(content);
+    }
+    
+    // Ensure proper VTT header
+    if (!vttContent.startsWith('WEBVTT')) {
+      vttContent = 'WEBVTT\n\n' + vttContent;
+    }
+    
+    // Create data URL instead of blob URL to avoid CORS issues
+    const vttDataUrl = `data:text/vtt;charset=utf-8,${encodeURIComponent(vttContent)}`;
+    
+    console.log('Created subtitle track with data URL:', fileName);
+    
+    return {
+      id: `subtitle-${Date.now()}-${Math.random()}`,
+      label: fileName.replace(/\.[^/.]+$/, ""), // Remove extension
+      src: vttDataUrl,
+      default: subtitleTracks.length === 0 // First subtitle is default
+    };
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -51,50 +203,64 @@ function App() {
     setIsDragOver(false);
   };
 
-  const setupVideoJs = (url: string) => {
-    if (videoRef.current && !playerRef.current) {
-      try {
-        playerRef.current = videojs(videoRef.current, {
-          controls: true,
-          responsive: true,
-          fluid: true,
-          preload: 'metadata',
-          autoplay: false, // Disable autoplay to respect browser policies
-          sources: [{
-            src: url,
-            type: 'video/mp4'
-          }]
-        });
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const videoFile = files.find(file => isVideoFile(file));
+    const subtitleFiles = files.filter(file => isSubtitleFile(file));
+    
+    if (videoFile) {
+      processVideoFile(videoFile);
+    }
+    
+    if (subtitleFiles.length > 0) {
+      processSubtitleFiles(subtitleFiles);
+    }
+  };
 
-        playerRef.current.ready(() => {
-          setIsLoading(false);
-          setLoadingMessage("");
-          setVideoError(null);
-          console.log('Video.js player ready');
-        });
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const videoFile = files.find(file => isVideoFile(file));
+    const subtitleFiles = files.filter(file => isSubtitleFile(file));
+    
+    if (videoFile) {
+      processVideoFile(videoFile);
+    }
+    
+    if (subtitleFiles.length > 0) {
+      processSubtitleFiles(subtitleFiles);
+    }
+  };
 
-        playerRef.current.on('error', (e: any) => {
-          console.error('Video.js error:', e);
-          setVideoError("Video format not supported by this player");
-          setIsLoading(false);
-        });
-
-        // Add timeout to prevent hanging
-        setTimeout(() => {
-          if (playerRef.current && !playerRef.current.readyState()) {
-            console.log('Video.js setup timeout, finishing loading');
-            setIsLoading(false);
-            setLoadingMessage("");
-          }
-        }, 5000);
-
-      } catch (error) {
-        console.error("Video.js setup error:", error);
-        setVideoError("Failed to initialize video player");
-        setIsLoading(false);
+  const processSubtitleFiles = async (files: File[]) => {
+    setIsLoading(true);
+    setLoadingMessage("Processing subtitle files...");
+    
+    try {
+      const newTracks: SubtitleTrack[] = [];
+      
+      for (const file of files) {
+        const track = await processSubtitleFile(file);
+        newTracks.push(track);
       }
-    } else if (playerRef.current) {
-      playerRef.current.src({ src: url, type: 'video/mp4' });
+      
+      setSubtitleTracks(prev => [...prev, ...newTracks]);
+      
+      // Auto-activate first subtitle if none are active
+      if (!activeSubtitle && newTracks.length > 0) {
+        setActiveSubtitle(newTracks[0].id);
+      }
+      
+      // Update video element with new tracks
+      setTimeout(() => updateVideoTracks(), 100);
+      
+      setLoadingMessage("");
+    } catch (error) {
+      console.error("Failed to process subtitle files:", error);
+      setVideoError("Failed to process subtitle files");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -110,17 +276,11 @@ function App() {
       setFileName(file.name);
       setIsPlaying(false);
       
-      // Determine which player to use
-      const useVjs = shouldUseVideoJs(file.name);
-      setUseVideoJs(useVjs);
+      setIsLoading(false);
+      setLoadingMessage("");
       
-      if (useVjs) {
-        setLoadingMessage("Initializing video player...");
-        setTimeout(() => setupVideoJs(url), 100);
-      } else {
-        setIsLoading(false);
-        setLoadingMessage("");
-      }
+      // Update video element with existing tracks
+      setTimeout(() => updateVideoTracks(), 500);
       
     } catch (error) {
       console.error("Failed to process video:", error);
@@ -129,22 +289,43 @@ function App() {
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    const videoFile = files.find(file => isVideoFile(file));
-    
-    if (videoFile) {
-      processVideoFile(videoFile);
+  const updateVideoTracks = () => {
+    const video = videoRef.current;
+    if (!video) {
+      console.log('No video element available for tracks');
+      return;
     }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && isVideoFile(file)) {
-      processVideoFile(file);
+    
+    console.log('Updating video tracks:', subtitleTracks.length);
+    
+    // Remove existing tracks
+    const existingTracks = video.querySelectorAll('track');
+    existingTracks.forEach(track => track.remove());
+    
+    // Add subtitle tracks
+    subtitleTracks.forEach((track, index) => {
+      const trackElement = document.createElement('track');
+      trackElement.kind = 'subtitles';
+      trackElement.src = track.src;
+      trackElement.srclang = 'en';
+      trackElement.label = track.label;
+      trackElement.default = track.id === activeSubtitle;
+      
+      video.appendChild(trackElement);
+      console.log('Added track to video:', track.label);
+    });
+    
+    // Enable the active track
+    if (activeSubtitle) {
+      setTimeout(() => {
+        const textTracks = video.textTracks;
+        for (let i = 0; i < textTracks.length; i++) {
+          const track = textTracks[i];
+          const subtitleTrack = subtitleTracks.find(t => t.label === track.label);
+          track.mode = subtitleTrack?.id === activeSubtitle ? 'showing' : 'disabled';
+        }
+        console.log('Updated track modes');
+      }, 200);
     }
   };
 
@@ -153,68 +334,63 @@ function App() {
       URL.revokeObjectURL(videoUrl);
     }
     
-    // Clean up Video.js player
-    if (playerRef.current) {
-      playerRef.current.dispose();
-      playerRef.current = null;
-    }
-    
     setVideoUrl(null);
     setFileName("");
     setIsPlaying(false);
-    setUseVideoJs(false);
     setIsLoading(false);
     setLoadingMessage("");
     setVideoError(null);
+    setSubtitleTracks([]);
+    setActiveSubtitle(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  const removeSubtitle = (trackId: string) => {
+    setSubtitleTracks(prev => prev.filter(track => track.id !== trackId));
+    
+    if (activeSubtitle === trackId) {
+      const remainingTracks = subtitleTracks.filter(track => track.id !== trackId);
+      setActiveSubtitle(remainingTracks.length > 0 ? remainingTracks[0].id : null);
+    }
+    
+    // Update video tracks
+    setTimeout(() => updateVideoTracks(), 100);
+  };
+
+  const toggleSubtitle = (trackId: string | null) => {
+    setActiveSubtitle(trackId);
+    // Update video tracks
+    setTimeout(() => updateVideoTracks(), 100);
+  };
+
   const togglePlayPause = () => {
-    if (useVideoJs && playerRef.current) {
-      try {
-        if (playerRef.current.paused()) {
-          playerRef.current.play();
-          setIsPlaying(true);
-        } else {
-          playerRef.current.pause();
-          setIsPlaying(false);
-        }
-      } catch (error) {
-        console.error("Playback control error:", error);
+    setIsPlaying(!isPlaying);
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(console.error);
       }
-    } else {
-      setIsPlaying(!isPlaying);
     }
   };
 
-  // Handle ReactPlayer errors by falling back to Video.js
-  const handleReactPlayerError = (error: any) => {
-    console.log('ReactPlayer failed, falling back to Video.js:', error);
-    
-    // Check if it's an autoplay error
-    if (error && error.message && error.message.includes('play method is not allowed')) {
-      console.log('Autoplay restriction detected, setting up Video.js without autoplay');
+  // Update video tracks when activeSubtitle changes
+  useEffect(() => {
+    if (videoUrl && subtitleTracks.length > 0) {
+      updateVideoTracks();
     }
-    
-    setUseVideoJs(true);
-    setIsLoading(true);
-    setIsPlaying(false); // Reset playing state
-    setLoadingMessage("Trying alternative player...");
-    if (videoUrl) {
-      setTimeout(() => setupVideoJs(videoUrl), 100);
-    }
-  };
+  }, [activeSubtitle]);
 
   useEffect(() => {
     return () => {
       // Cleanup on unmount
-      if (playerRef.current) {
-        playerRef.current.dispose();
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
       }
     };
-  }, []);
+  }, [videoUrl]);
 
   return (
     <main className="container">
@@ -250,10 +426,13 @@ function App() {
           onClick={() => fileInputRef.current?.click()}
         >
           <div className="drop-zone-content">
-            <p>Drag and drop a video file here</p>
-            <p>or click to select a file</p>
+            <p>Drag and drop video and subtitle files here</p>
+            <p>or click to select files</p>
             <p className="supported-formats">
-              Supports: MP4, WebM, MKV, MOV, AVI, and more
+              Videos: MP4, WebM, MKV, MOV, AVI, and more
+            </p>
+            <p className="supported-formats">
+              Subtitles: SRT, VTT, ASS, SSA, SUB
             </p>
             <p className="compatibility-note">
               * Some formats may have limited browser support
@@ -261,7 +440,8 @@ function App() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="video/*,.mkv"
+              accept="video/*,.mkv,.srt,.vtt,.ass,.ssa,.sub"
+              multiple
               onChange={handleFileSelect}
               style={{ display: 'none' }}
             />
@@ -271,9 +451,11 @@ function App() {
         <div className="video-container">
           <div className="video-info">
             <p>Playing: {fileName}</p>
-            <p className="player-type">
-              {useVideoJs ? 'Using Video.js player' : 'Using ReactPlayer'}
-            </p>
+            {subtitleTracks.length > 0 && (
+              <p className="subtitle-info">
+                📝 {subtitleTracks.length} subtitle track(s) loaded
+              </p>
+            )}
             {!isPlaying && (
               <p className="playback-hint">
                 📹 Click the play button or use player controls to start
@@ -281,34 +463,57 @@ function App() {
             )}
           </div>
           
-          {useVideoJs ? (
-            <div className="video-js-container">
-              <video
-                ref={videoRef}
-                className="video-js vjs-default-skin"
-                data-setup="{}"
-              />
+          {subtitleTracks.length > 0 && (
+            <div className="subtitle-controls">
+              <div className="subtitle-selector">
+                <label>Subtitles:</label>
+                <select 
+                  value={activeSubtitle || ''} 
+                  onChange={(e) => toggleSubtitle(e.target.value || null)}
+                >
+                  <option value="">Off</option>
+                  {subtitleTracks.map(track => (
+                    <option key={track.id} value={track.id}>
+                      {track.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="subtitle-list">
+                {subtitleTracks.map(track => (
+                  <div key={track.id} className="subtitle-item">
+                    <span className="subtitle-name">{track.label}</span>
+                    <button 
+                      onClick={() => removeSubtitle(track.id)}
+                      className="remove-subtitle"
+                      title="Remove subtitle"
+                    >
+                      ❌
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          ) : (
-            <ReactPlayer
-              url={videoUrl}
-              playing={isPlaying}
-              controls={true}
+          )}
+          
+          <div className="video-player-container">
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              controls
               width="100%"
               height="auto"
-              config={{
-                file: {
-                  attributes: {
-                    preload: 'metadata'
-                  }
-                }
-              }}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
-              onError={handleReactPlayerError}
-              onReady={() => console.log('ReactPlayer ready')}
-            />
-          )}
+              onLoadedMetadata={() => {
+                console.log('Video loaded, updating tracks');
+                setTimeout(() => updateVideoTracks(), 500);
+              }}
+              crossOrigin="anonymous"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
           
           <div className="video-controls">
             <button onClick={togglePlayPause}>
