@@ -17,6 +17,7 @@ interface SubtitleCue {
 function App() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isSubtitleDragOver, setIsSubtitleDragOver] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [fileName, setFileName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +28,9 @@ function App() {
   const [currentCues, setCurrentCues] = useState<SubtitleCue[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
   const [subtitleData, setSubtitleData] = useState<Map<string, SubtitleCue[]>>(new Map());
+  const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const subtitleInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Video file extensions that we want to support
@@ -238,6 +241,38 @@ function App() {
     }
   };
 
+  // Dedicated subtitle drop zone handlers
+  const handleSubtitleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsSubtitleDragOver(true);
+  };
+
+  const handleSubtitleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsSubtitleDragOver(false);
+  };
+
+  const handleSubtitleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsSubtitleDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const subtitleFiles = files.filter(file => isSubtitleFile(file));
+    
+    if (subtitleFiles.length > 0) {
+      processSubtitleFiles(subtitleFiles);
+    }
+  };
+
+  const handleSubtitleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const subtitleFiles = files.filter(file => isSubtitleFile(file));
+    
+    if (subtitleFiles.length > 0) {
+      processSubtitleFiles(subtitleFiles);
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const videoFile = files.find(file => isVideoFile(file));
@@ -318,6 +353,9 @@ function App() {
     setSubtitleData(new Map());
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+    if (subtitleInputRef.current) {
+      subtitleInputRef.current.value = '';
     }
   };
 
@@ -512,6 +550,34 @@ function App() {
             )}
           </div>
           
+          {/* Dedicated Subtitle Drop Zone */}
+          <div
+            className={`subtitle-drop-zone ${isSubtitleDragOver ? 'drag-over' : ''}`}
+            onDragOver={handleSubtitleDragOver}
+            onDragLeave={handleSubtitleDragLeave}
+            onDrop={handleSubtitleDrop}
+            onClick={() => subtitleInputRef.current?.click()}
+          >
+            <div className="subtitle-drop-content">
+              <span className="subtitle-drop-icon">📝</span>
+              <span className="subtitle-drop-text">
+                {isSubtitleDragOver 
+                  ? "Drop subtitle files here" 
+                  : "Drag subtitle files here or click to browse"
+                }
+              </span>
+              <span className="subtitle-formats">SRT, VTT, ASS, SSA, SUB</span>
+            </div>
+            <input
+              ref={subtitleInputRef}
+              type="file"
+              accept=".srt,.vtt,.ass,.ssa,.sub"
+              multiple
+              onChange={handleSubtitleFileSelect}
+              style={{ display: 'none' }}
+            />
+          </div>
+          
           {subtitleTracks.length > 0 && (
             <div className="subtitle-controls">
               <div className="subtitle-selector">
@@ -589,8 +655,59 @@ function App() {
             <button onClick={togglePlayPause}>
               {isPlaying ? 'Pause' : 'Play'}
             </button>
+            <button onClick={() => setShowSubtitlePanel(!showSubtitlePanel)}>
+              Subtitles/CC
+            </button>
             <button onClick={clearVideo}>Clear Video</button>
           </div>
+          
+          {/* YouTube-style Subtitle Panel */}
+          {showSubtitlePanel && (
+            <div className="ytp-panel" style={{ width: '251px', height: '238px' }}>
+              <div className="ytp-panel-header">
+                <div className="ytp-panel-back-button-container">
+                  <button 
+                    className="ytp-button ytp-panel-back-button" 
+                    aria-label="Back to previous menu"
+                    onClick={() => setShowSubtitlePanel(false)}
+                  ></button>
+                </div>
+                <span className="ytp-panel-title">Subtitles/CC</span>
+                <button className="ytp-button ytp-panel-options">Options</button>
+              </div>
+              <div className="ytp-panel-menu" role="menu" style={{ height: `${Math.max(97, (subtitleTracks.length + 1) * 48)}px` }}>
+                {/* Off option */}
+                <div 
+                  className="ytp-menuitem" 
+                  tabIndex={0} 
+                  role="menuitemradio" 
+                  aria-checked={!activeSubtitle}
+                  onClick={() => toggleSubtitle(null)}
+                >
+                  <div className="ytp-menuitem-label">Off</div>
+                </div>
+                
+                {/* Subtitle track options */}
+                {subtitleTracks.map(track => (
+                  <div 
+                    key={track.id}
+                    className="ytp-menuitem" 
+                    tabIndex={0} 
+                    role="menuitemradio" 
+                    aria-checked={activeSubtitle === track.id}
+                    onClick={() => toggleSubtitle(track.id)}
+                  >
+                    <div className="ytp-menuitem-label">{track.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="ytp-panel-footer" style={{ width: '251px' }}>
+                <div className="ytp-panel-footer-content">
+                  <span>This setting only applies to the current video. Add more subtitle files using the drop zone above.</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </main>

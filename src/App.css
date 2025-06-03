@@ -621,3 +621,217 @@ button {
   position: relative;
   background-color: #000;
 }
+
+/* Dedicated Subtitle Drop Zone */
+.subtitle-drop-zone {
+  border: 2px dashed #6f42c1;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #f8f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+}
+
+.subtitle-drop-zone:hover {
+  border-color: #5a2d91;
+  background-color: #f0e6ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(111, 66, 193, 0.15);
+}
+
+.subtitle-drop-zone.drag-over {
+  border-color: #24c8db;
+  background-color: #e8f8ff;
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(36, 200, 219, 0.25);
+}
+
+.subtitle-drop-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.subtitle-drop-icon {
+  font-size: 1.5em;
+}
+
+.subtitle-drop-text {
+  font-size: 1em;
+  font-weight: 500;
+  color: #6f42c1;
+}
+
+.subtitle-formats {
+  font-size: 0.85em;
+  color: #888;
+  font-style: italic;
+  background-color: rgba(111, 66, 193, 0.1);
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+/* Dark mode styles for subtitle drop zone */
+@media (prefers-color-scheme: dark) {
+  .subtitle-drop-zone {
+    border-color: #9d7ce0;
+    background-color: #2a1f3d;
+  }
+
+  .subtitle-drop-zone:hover {
+    border-color: #b794f0;
+    background-color: #3d2a5a;
+  }
+
+  .subtitle-drop-zone.drag-over {
+    border-color: #24c8db;
+    background-color: #1a4a5a;
+  }
+
+  .subtitle-drop-text {
+    color: #c084fc;
+  }
+
+  .subtitle-formats {
+    color: #bbb;
+    background-color: rgba(192, 132, 252, 0.15);
+  }
+}
+
+/* YouTube-style Subtitle Panel */
+.ytp-panel {
+  position: absolute;
+  bottom: 60px;
+  right: 20px;
+  background: rgba(28, 28, 28, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color: white;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 13px;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.ytp-panel-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 12px 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ytp-panel-back-button-container {
+  margin-right: 12px;
+}
+
+.ytp-button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.ytp-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.ytp-panel-back-button::before {
+  content: "←";
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.ytp-panel-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.ytp-panel-options {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.ytp-panel-menu {
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.ytp-menuitem {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.ytp-menuitem:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.ytp-menuitem[aria-checked="true"] {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.ytp-menuitem[aria-checked="true"]::before {
+  content: "✓";
+  position: absolute;
+  left: 16px;
+  color: #3ea6ff;
+  font-weight: bold;
+}
+
+.ytp-menuitem[aria-checked="true"] .ytp-menuitem-label {
+  margin-left: 20px;
+  color: #3ea6ff;
+}
+
+.ytp-menuitem-label {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.ytp-panel-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
+}
+
+.ytp-panel-footer-content {
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ytp-panel-footer-content-link {
+  color: #3ea6ff;
+  text-decoration: none;
+}
+
+.ytp-panel-footer-content-link:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .ytp-panel {
+    background: rgba(28, 28, 28, 0.95);
+  }
+}
