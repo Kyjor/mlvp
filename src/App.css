@@ -244,10 +244,90 @@ button {
 }
 
 .video-container {
+  max-width: 100%;
   margin: 20px 0;
-  border-radius: 12px;
+  background: #000;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.video-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.video-player-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+}
+
+.video-player-container video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* YouTube-style subtitle overlay */
+.subtitle-overlay-container {
+  position: absolute;
+  bottom: 2%;
+  left: 21.2%;
+  width: auto;
+  max-width: 57.6%; /* Roughly 422px on a 720p video */
+  pointer-events: none;
+  z-index: 10;
+}
+
+.subtitle-window {
+  position: relative;
+  width: 100%;
+  text-align: left;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.subtitle-content {
+  display: block;
+  overflow-wrap: normal;
+}
+
+.subtitle-line {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.subtitle-segment {
+  display: inline-block;
+  white-space: pre-wrap;
+  background: rgba(8, 8, 8, 0.75);
+  color: rgb(255, 255, 255);
+  font-family: "Arial", "Helvetica", "Roboto", "YouTube Noto", sans-serif;
+  font-size: 16px;
+  line-height: 1.3;
+  padding: 2px 4px;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Responsive subtitle sizing */
+@media (max-width: 768px) {
+  .subtitle-overlay-container {
+    left: 5%;
+    width: 90%;
+    max-width: 90%;
+  }
+  
+  .subtitle-segment {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .subtitle-segment {
+    font-size: 12px;
+  }
 }
 
 .video-info {
@@ -535,19 +615,6 @@ button {
 
 .video-container {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.video-player-container {
-  position: relative;
-  background-color: #000;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.video-player-container video {
-  width: 100%;
-  height: auto;
-  display: block;
 }
 
 .react-player-container {

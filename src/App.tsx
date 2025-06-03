@@ -8,6 +8,12 @@ interface SubtitleTrack {
   default?: boolean;
 }
 
+interface SubtitleCue {
+  startTime: number;
+  endTime: number;
+  text: string;
+}
+
 function App() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -18,6 +24,9 @@ function App() {
   const [videoError, setVideoError] = useState<string | null>(null);
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
   const [activeSubtitle, setActiveSubtitle] = useState<string | null>(null);
+  const [currentCues, setCurrentCues] = useState<SubtitleCue[]>([]);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [subtitleData, setSubtitleData] = useState<Map<string, SubtitleCue[]>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -180,13 +189,22 @@ function App() {
       vttContent = 'WEBVTT\n\n' + vttContent;
     }
     
-    // Create data URL instead of blob URL to avoid CORS issues
+    // Parse VTT content into cues for custom rendering
+    const cues = parseVttContent(vttContent);
+    console.log('Parsed subtitle cues:', cues.length);
+    
+    const trackId = `subtitle-${Date.now()}-${Math.random()}`;
+    
+    // Store cues for this track
+    setSubtitleData(prev => new Map(prev.set(trackId, cues)));
+    
+    // Create data URL for fallback (though we won't use native tracks anymore)
     const vttDataUrl = `data:text/vtt;charset=utf-8,${encodeURIComponent(vttContent)}`;
     
-    console.log('Created subtitle track with data URL:', fileName);
+    console.log('Created subtitle track with', cues.length, 'cues:', fileName);
     
     return {
-      id: `subtitle-${Date.now()}-${Math.random()}`,
+      id: trackId,
       label: fileName.replace(/\.[^/.]+$/, ""), // Remove extension
       src: vttDataUrl,
       default: subtitleTracks.length === 0 // First subtitle is default
@@ -253,9 +271,6 @@ function App() {
         setActiveSubtitle(newTracks[0].id);
       }
       
-      // Update video element with new tracks
-      setTimeout(() => updateVideoTracks(), 100);
-      
       setLoadingMessage("");
     } catch (error) {
       console.error("Failed to process subtitle files:", error);
@@ -279,53 +294,10 @@ function App() {
       setIsLoading(false);
       setLoadingMessage("");
       
-      // Update video element with existing tracks
-      setTimeout(() => updateVideoTracks(), 500);
-      
     } catch (error) {
       console.error("Failed to process video:", error);
       setVideoError("Failed to load video file");
       setIsLoading(false);
-    }
-  };
-
-  const updateVideoTracks = () => {
-    const video = videoRef.current;
-    if (!video) {
-      console.log('No video element available for tracks');
-      return;
-    }
-    
-    console.log('Updating video tracks:', subtitleTracks.length);
-    
-    // Remove existing tracks
-    const existingTracks = video.querySelectorAll('track');
-    existingTracks.forEach(track => track.remove());
-    
-    // Add subtitle tracks
-    subtitleTracks.forEach((track, index) => {
-      const trackElement = document.createElement('track');
-      trackElement.kind = 'subtitles';
-      trackElement.src = track.src;
-      trackElement.srclang = 'en';
-      trackElement.label = track.label;
-      trackElement.default = track.id === activeSubtitle;
-      
-      video.appendChild(trackElement);
-      console.log('Added track to video:', track.label);
-    });
-    
-    // Enable the active track
-    if (activeSubtitle) {
-      setTimeout(() => {
-        const textTracks = video.textTracks;
-        for (let i = 0; i < textTracks.length; i++) {
-          const track = textTracks[i];
-          const subtitleTrack = subtitleTracks.find(t => t.label === track.label);
-          track.mode = subtitleTrack?.id === activeSubtitle ? 'showing' : 'disabled';
-        }
-        console.log('Updated track modes');
-      }, 200);
     }
   };
 
@@ -342,6 +314,8 @@ function App() {
     setVideoError(null);
     setSubtitleTracks([]);
     setActiveSubtitle(null);
+    setCurrentCues([]);
+    setSubtitleData(new Map());
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -349,20 +323,20 @@ function App() {
 
   const removeSubtitle = (trackId: string) => {
     setSubtitleTracks(prev => prev.filter(track => track.id !== trackId));
+    setSubtitleData(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(trackId);
+      return newMap;
+    });
     
     if (activeSubtitle === trackId) {
       const remainingTracks = subtitleTracks.filter(track => track.id !== trackId);
       setActiveSubtitle(remainingTracks.length > 0 ? remainingTracks[0].id : null);
     }
-    
-    // Update video tracks
-    setTimeout(() => updateVideoTracks(), 100);
   };
 
   const toggleSubtitle = (trackId: string | null) => {
     setActiveSubtitle(trackId);
-    // Update video tracks
-    setTimeout(() => updateVideoTracks(), 100);
   };
 
   const togglePlayPause = () => {
@@ -376,16 +350,91 @@ function App() {
     }
   };
 
-  // Update video tracks when activeSubtitle changes
-  useEffect(() => {
-    if (videoUrl && subtitleTracks.length > 0) {
-      updateVideoTracks();
+  // Parse VTT content into subtitle cues
+  const parseVttContent = (vttContent: string): SubtitleCue[] => {
+    const cues: SubtitleCue[] = [];
+    const lines = vttContent.split('\n');
+    
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      
+      // Skip empty lines and WEBVTT header
+      if (!line || line === 'WEBVTT') {
+        i++;
+        continue;
+      }
+      
+      // Check if this is a timestamp line
+      if (line.includes('-->')) {
+        const timeMatch = line.match(/(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/);
+        if (timeMatch) {
+          const startTime = parseVttTime(timeMatch[1]);
+          const endTime = parseVttTime(timeMatch[2]);
+          
+          // Collect text lines until we hit an empty line or end of file
+          const textLines: string[] = [];
+          i++;
+          while (i < lines.length && lines[i].trim() !== '') {
+            textLines.push(lines[i].trim());
+            i++;
+          }
+          
+          if (textLines.length > 0) {
+            cues.push({
+              startTime,
+              endTime,
+              text: textLines.join('\n')
+            });
+          }
+        }
+      }
+      i++;
     }
-  }, [activeSubtitle]);
+    
+    return cues;
+  };
 
+  // Parse VTT time format to seconds
+  const parseVttTime = (timeStr: string): number => {
+    const parts = timeStr.split(':');
+    const hours = parseInt(parts[0]);
+    const minutes = parseInt(parts[1]);
+    const secondsParts = parts[2].split('.');
+    const seconds = parseInt(secondsParts[0]);
+    const milliseconds = parseInt(secondsParts[1]);
+    
+    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+  };
+
+  // Get active cues for current time
+  const getActiveCues = (cues: SubtitleCue[], currentTime: number): SubtitleCue[] => {
+    return cues.filter(cue => 
+      currentTime >= cue.startTime && currentTime <= cue.endTime
+    );
+  };
+
+  // Update current cues based on video time and active subtitle
+  useEffect(() => {
+    if (activeSubtitle && subtitleData.has(activeSubtitle)) {
+      const cues = subtitleData.get(activeSubtitle)!;
+      const activeCues = getActiveCues(cues, currentTime);
+      setCurrentCues(activeCues);
+    } else {
+      setCurrentCues([]);
+    }
+  }, [currentTime, activeSubtitle, subtitleData]);
+
+  // Handle video time updates
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  };
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      // Cleanup on unmount
       if (videoUrl) {
         URL.revokeObjectURL(videoUrl);
       }
@@ -497,22 +546,43 @@ function App() {
           )}
           
           <div className="video-player-container">
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              controls
-              width="100%"
-              height="auto"
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onLoadedMetadata={() => {
-                console.log('Video loaded, updating tracks');
-                setTimeout(() => updateVideoTracks(), 500);
-              }}
-              crossOrigin="anonymous"
-            >
-              Your browser does not support the video tag.
-            </video>
+            <div className="video-wrapper">
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                controls
+                width="100%"
+                height="auto"
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={() => {
+                  console.log('Video loaded');
+                }}
+                crossOrigin="anonymous"
+              >
+                Your browser does not support the video tag.
+              </video>
+              
+              {/* YouTube-style subtitle overlay */}
+              {currentCues.length > 0 && (
+                <div className="subtitle-overlay-container">
+                  <div className="subtitle-window">
+                    <div className="subtitle-content">
+                      {currentCues.map((cue, index) => (
+                        <div key={index} className="subtitle-line">
+                          {cue.text.split('\n').map((line, lineIndex) => (
+                            <span key={lineIndex} className="subtitle-segment">
+                              {line}
+                            </span>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="video-controls">
