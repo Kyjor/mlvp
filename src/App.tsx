@@ -32,6 +32,7 @@ function App() {
   const [loadingMessage, setLoadingMessage] = useState("Checking for saved session...");
   const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
   const [showAudioRecording, setShowAudioRecording] = useState(false);
+  const [blurSecondarySubtitle, setBlurSecondarySubtitle] = useState(false);
   const [cachedVideoFileIdentifier, setCachedVideoFileIdentifier] = useState<string | null>(null);
   const [cachedSeekTime, setCachedSeekTime] = useState<number | null>(null);
   const [initialCacheLoadComplete, setInitialCacheLoadComplete] = useState(false);
@@ -332,6 +333,7 @@ function App() {
             subtitleOffset={subtitleManagerHook.subtitleOffset}
             secondarySubtitleOffset={subtitleManagerHook.secondarySubtitleOffset}
             isCapturingAudio={audioRecordingHook.isCapturingTimeRange}
+            blurSecondary={blurSecondarySubtitle}
             currentTime={videoPlayerHook.currentTime}
             videoRef={videoPlayerHook.videoRef}
             videoWrapperRef={subtitleCustomizationHook.videoWrapperRef}
@@ -353,6 +355,7 @@ function App() {
             onOffsetChange={subtitleManagerHook.updateSubtitleOffset}
             onSecondaryOffsetChange={subtitleManagerHook.updateSecondarySubtitleOffset}
             onCaptureAudio={audioRecordingHook.captureTimeRange}
+            onToggleBlurSecondary={setBlurSecondarySubtitle}
           />
           
           <div className="video-controls">

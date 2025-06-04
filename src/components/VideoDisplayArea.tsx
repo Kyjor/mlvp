@@ -19,6 +19,7 @@ interface VideoDisplayAreaProps {
   subtitleOffset: number;
   secondarySubtitleOffset: number;
   isCapturingAudio: boolean;
+  blurSecondary: boolean;
   currentTime?: number;
 
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -42,6 +43,7 @@ interface VideoDisplayAreaProps {
   onOffsetChange: (newOffset: number) => void;
   onSecondaryOffsetChange: (newOffset: number) => void;
   onCaptureAudio?: (startTime: number, endTime: number) => void;
+  onToggleBlurSecondary: (enabled: boolean) => void;
 }
 
 export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
@@ -60,6 +62,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   subtitleOffset,
   secondarySubtitleOffset,
   isCapturingAudio,
+  blurSecondary,
   currentTime = 0,
   videoRef,
   videoWrapperRef,
@@ -81,6 +84,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onOffsetChange,
   onSecondaryOffsetChange,
   onCaptureAudio,
+  onToggleBlurSecondary,
 }) => {
   if (!videoUrl) return null; // Should not happen if App.tsx logic is correct
 
@@ -135,6 +139,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
         subtitleSize={subtitleSize}
         subtitleOffset={subtitleOffset}
         secondarySubtitleOffset={secondarySubtitleOffset}
+        blurSecondary={blurSecondary}
         onToggleSubtitle={onToggleActiveSubtitle}
         onToggleSecondarySubtitle={onToggleSecondarySubtitle}
         onRemoveSubtitle={onRemoveSubtitleTrack} 
@@ -142,6 +147,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
         onResetSize={onResetSubtitleSize} 
         onOffsetChange={onOffsetChange}
         onSecondaryOffsetChange={onSecondaryOffsetChange}
+        onToggleBlurSecondary={onToggleBlurSecondary}
       />
       
       <div className="video-player-container">
@@ -178,6 +184,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
             onMouseDown={onSubtitleMouseDown}
             onWheel={onSubtitleWheel}
             onCaptureAudio={onCaptureAudio}
+            blurSecondary={blurSecondary}
           />
         </div>
       </div>

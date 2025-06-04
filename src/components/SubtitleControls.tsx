@@ -10,6 +10,7 @@ interface SubtitleControlsProps {
   subtitleSize: number;
   subtitleOffset: number;
   secondarySubtitleOffset: number;
+  blurSecondary: boolean;
   onToggleSubtitle: (trackId: string | null) => void;
   onToggleSecondarySubtitle: (trackId: string | null) => void;
   onRemoveSubtitle: (trackId: string) => void;
@@ -17,6 +18,7 @@ interface SubtitleControlsProps {
   onResetSize: () => void;
   onOffsetChange: (newOffset: number) => void;
   onSecondaryOffsetChange: (newOffset: number) => void;
+  onToggleBlurSecondary: (enabled: boolean) => void;
 }
 
 export const SubtitleControls: React.FC<SubtitleControlsProps> = ({
@@ -27,13 +29,15 @@ export const SubtitleControls: React.FC<SubtitleControlsProps> = ({
   subtitleSize,
   subtitleOffset,
   secondarySubtitleOffset,
+  blurSecondary,
   onToggleSubtitle,
   onToggleSecondarySubtitle,
   onRemoveSubtitle,
   onResetPosition,
   onResetSize,
   onOffsetChange,
-  onSecondaryOffsetChange
+  onSecondaryOffsetChange,
+  onToggleBlurSecondary
 }) => {
   if (subtitleTracks.length === 0) return null;
 
@@ -70,6 +74,19 @@ export const SubtitleControls: React.FC<SubtitleControlsProps> = ({
               </option>
             ))}
           </select>
+          
+          {secondarySubtitle && (
+            <div className="blur-toggle">
+              <label>
+                <input 
+                  type="checkbox"
+                  checked={blurSecondary}
+                  onChange={(e) => onToggleBlurSecondary(e.target.checked)}
+                />
+                Blur secondary (hover to reveal)
+              </label>
+            </div>
+          )}
         </div>
       </div>
       

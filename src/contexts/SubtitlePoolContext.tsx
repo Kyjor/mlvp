@@ -18,7 +18,8 @@ interface SubtitlePoolContextType {
     secondaryTrackId: string | null,
     primaryOffset?: number, 
     secondaryOffset?: number,
-    onCaptureAudio?: (startTime: number, endTime: number) => void
+    onCaptureAudio?: (startTime: number, endTime: number) => void,
+    blurSecondary?: boolean
   ) => void;
   getPoolContainer: () => HTMLDivElement;
   clearTrackSubtitles: (trackId: string) => void;
@@ -117,7 +118,8 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
     secondaryTrackId: string | null,
     primaryOffset: number = 0, 
     secondaryOffset: number = 0,
-    onCaptureAudio?: (startTime: number, endTime: number) => void
+    onCaptureAudio?: (startTime: number, endTime: number) => void,
+    blurSecondary?: boolean
   ) => {
     const pool = poolRef.current;
     const primaryAdjustedTime = currentTime - primaryOffset;
@@ -150,6 +152,7 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
         element.style.display = 'flex';
         element.classList.toggle('primary-subtitle', isPrimary);
         element.classList.toggle('secondary-subtitle', !isPrimary);
+        element.classList.toggle('blur-secondary', !isPrimary && blurSecondary);
         subtitleElement.isVisible = true;
         
         // Update capture button handler
@@ -164,7 +167,7 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else if (!shouldBeVisible && subtitleElement.isVisible) {
         // Hide subtitle
         element.style.display = 'none';
-        element.classList.remove('primary-subtitle', 'secondary-subtitle');
+        element.classList.remove('primary-subtitle', 'secondary-subtitle', 'blur-secondary');
         subtitleElement.isVisible = false;
       }
     });

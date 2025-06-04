@@ -13,6 +13,7 @@ interface PooledSubtitleOverlayProps {
   secondarySubtitleOffset: number;
   isDraggingSubtitle: boolean;
   isCapturingAudio: boolean;
+  blurSecondary: boolean;
   subtitleRef: React.RefObject<HTMLDivElement>;
   onMouseDown: (e: React.MouseEvent) => void;
   onWheel: (e: React.WheelEvent) => void;
@@ -29,6 +30,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
   secondarySubtitleOffset,
   isDraggingSubtitle,
   isCapturingAudio,
+  blurSecondary,
   subtitleRef,
   onMouseDown,
   onWheel,
@@ -44,9 +46,10 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
       secondaryTrackId, 
       primarySubtitleOffset, 
       secondarySubtitleOffset, 
-      onCaptureAudio
+      onCaptureAudio,
+      blurSecondary
     );
-  }, [currentTime, primaryTrackId, secondaryTrackId, primarySubtitleOffset, secondarySubtitleOffset, onCaptureAudio, updateVisibleSubtitles]);
+  }, [currentTime, primaryTrackId, secondaryTrackId, primarySubtitleOffset, secondarySubtitleOffset, onCaptureAudio, blurSecondary, updateVisibleSubtitles]);
 
   // Handle click events on the pool container
   const handleContainerClick = async (event: React.MouseEvent) => {

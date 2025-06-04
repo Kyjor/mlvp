@@ -1596,3 +1596,49 @@ button {
     min-width: unset;
   }
 }
+
+/* Secondary subtitle blur effect */
+.pooled-subtitle.secondary-subtitle.blur-secondary .subtitle-segment {
+  filter: blur(4px);
+  transition: filter 0.3s ease;
+  cursor: pointer;
+}
+
+.pooled-subtitle.secondary-subtitle.blur-secondary:hover .subtitle-segment {
+  filter: blur(0px);
+}
+
+.pooled-subtitle.secondary-subtitle.blur-secondary .subtitle-capture-btn {
+  filter: blur(2px);
+  transition: filter 0.3s ease;
+}
+
+.pooled-subtitle.secondary-subtitle.blur-secondary:hover .subtitle-capture-btn {
+  filter: blur(0px);
+}
+
+/* Blur toggle styling */
+.blur-toggle {
+  margin-top: 8px;
+}
+
+.blur-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  font-weight: normal;
+  color: #b3d9ff;
+  cursor: pointer;
+}
+
+.blur-toggle input[type="checkbox"] {
+  margin: 0;
+  transform: scale(0.9);
+}
+
+@media (prefers-color-scheme: dark) {
+  .blur-toggle label {
+    color: #b3d9ff;
+  }
+}
