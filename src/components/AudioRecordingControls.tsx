@@ -11,6 +11,7 @@ interface AudioRecordingControlsProps {
   onDownloadAudio: () => void;
   onCopyAudioDataUrl: () => void;
   onSetBufferDuration: (duration: number) => void;
+  onClearError: () => void;
 }
 
 export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
@@ -23,7 +24,8 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
   onStopRecording,
   onDownloadAudio,
   onCopyAudioDataUrl,
-  onSetBufferDuration
+  onSetBufferDuration,
+  onClearError
 }) => {
   const [showSettings, setShowSettings] = useState(false);
 
@@ -41,6 +43,14 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
       </div>
     );
   }
+
+  const handleStartRecording = () => {
+    if (typeof onStartRecording === 'function') {
+      onStartRecording();
+    } else {
+      console.error('onStartRecording is not a function:', onStartRecording);
+    }
+  };
 
   const handleDurationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onSetBufferDuration(parseInt(e.target.value));
@@ -103,7 +113,7 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
         <div className="recording-buttons">
           {!isRecording && !isCapturingTimeRange ? (
             <button 
-              onClick={onStartRecording}
+              onClick={handleStartRecording}
               className="start-recording-btn"
               title="Start recording audio buffer"
             >
@@ -139,6 +149,12 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
         {error && (
           <div className="audio-recording-error">
             ⚠️ {error}
+            <button 
+              onClick={onClearError}
+              style={{ marginLeft: '10px', padding: '2px 6px', fontSize: '0.8em' }}
+            >
+              Clear Error
+            </button>
           </div>
         )}
       </div>

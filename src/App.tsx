@@ -57,7 +57,7 @@ function App() {
     videoRef: videoPlayerHook.videoRef,
     bufferDurationSeconds: 30
   });
-  
+
   useEffect(() => {
     const cachedData = loadPlayerData();
     if (cachedData) {
@@ -373,6 +373,7 @@ function App() {
               onDownloadAudio={audioRecordingHook.downloadBufferedAudio}
               onCopyAudioDataUrl={audioRecordingHook.copyAudioDataUrl}
               onSetBufferDuration={audioRecordingHook.setBufferDuration}
+              onClearError={audioRecordingHook.clearError}
             />
           )}
         </>

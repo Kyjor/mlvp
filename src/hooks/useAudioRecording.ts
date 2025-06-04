@@ -50,26 +50,55 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
 
   // Start recording audio from video
   const startRecording = useCallback(async () => {
-    if (!state.isSupported || !videoRef.current || state.isRecording) {
+    console.log('startRecording called', { 
+      isSupported: state.isSupported, 
+      hasVideo: !!videoRef.current, 
+      isRecording: state.isRecording 
+    });
+    
+    if (!state.isSupported) {
+      console.log('Audio recording not supported');
+      setState(prev => ({ ...prev, error: 'Audio recording not supported' }));
+      return;
+    }
+    
+    if (!videoRef.current) {
+      console.log('No video element available');
+      setState(prev => ({ ...prev, error: 'No video element available' }));
+      return;
+    }
+    
+    if (state.isRecording) {
+      console.log('Already recording');
       return;
     }
 
     try {
+      console.log('Starting audio recording...');
+      
       // Create audio context
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        throw new Error('AudioContext not available');
+      }
+      
       const audioContext = new AudioContextClass();
+      console.log('AudioContext created', { sampleRate: audioContext.sampleRate });
       audioContextRef.current = audioContext;
 
       // Create source from video element
       const source = audioContext.createMediaElementSource(videoRef.current);
+      console.log('MediaElementAudioSourceNode created');
       sourceNodeRef.current = source;
 
       // Create script processor for audio capture
       const processor = audioContext.createScriptProcessor(4096, 2, 2);
+      console.log('ScriptProcessorNode created');
       processorNodeRef.current = processor;
 
       // Initialize buffer
       initializeBuffer(audioContext.sampleRate, state.bufferDuration);
+      console.log('Audio buffer initialized');
 
       // Process audio data
       processor.onaudioprocess = (event) => {
@@ -93,8 +122,10 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
       source.connect(processor);
       processor.connect(audioContext.destination);
       source.connect(audioContext.destination); // Also connect to output so video audio still plays
+      console.log('Audio nodes connected');
 
       setState(prev => ({ ...prev, isRecording: true, error: null }));
+      console.log('Recording started successfully');
     } catch (error) {
       console.error('Error starting audio recording:', error);
       setState(prev => ({ 
@@ -317,27 +348,34 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
     setState(prev => ({ ...prev, isCapturingTimeRange: true, error: null }));
 
     try {
-      // Create audio context for time-range capture
+      // Create a temporary audio element to capture from instead of the video
+      const tempAudio = document.createElement('audio');
+      tempAudio.src = video.src;
+      tempAudio.currentTime = captureStart;
+      tempAudio.crossOrigin = 'anonymous';
+      
+      // Wait for audio to load
+      await new Promise<void>((resolve, reject) => {
+        tempAudio.addEventListener('canplay', () => resolve(), { once: true });
+        tempAudio.addEventListener('error', reject, { once: true });
+        tempAudio.load();
+      });
+
+      // Create audio context and capture from temp audio
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContextClass();
       
-      // Create source from video element
-      const source = audioContext.createMediaElementSource(video);
-      
-      // Create script processor for audio capture
+      const source = audioContext.createMediaElementSource(tempAudio);
       const processor = audioContext.createScriptProcessor(4096, 2, 2);
       
-      // Array to store captured audio chunks
       const capturedChunks: Float32Array[] = [];
       const sampleRate = audioContext.sampleRate;
       
-      // Process audio data
       processor.onaudioprocess = (event) => {
         const inputBuffer = event.inputBuffer;
         const leftChannel = inputBuffer.getChannelData(0);
         const rightChannel = inputBuffer.numberOfChannels > 1 ? inputBuffer.getChannelData(1) : leftChannel;
         
-        // Mix to mono and store
         const monoData = new Float32Array(leftChannel.length);
         for (let i = 0; i < leftChannel.length; i++) {
           monoData[i] = (leftChannel[i] + rightChannel[i]) / 2;
@@ -346,26 +384,12 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
         capturedChunks.push(new Float32Array(monoData));
       };
 
-      // Connect nodes
+      // Connect audio nodes
       source.connect(processor);
       processor.connect(audioContext.destination);
 
-      // Seek to start time and play
-      video.currentTime = captureStart;
-      
-      // Wait for seek to complete
-      await new Promise<void>((resolve) => {
-        const onSeeked = () => {
-          video.removeEventListener('seeked', onSeeked);
-          resolve();
-        };
-        video.addEventListener('seeked', onSeeked);
-      });
-
-      // Start playback
-      if (video.paused) {
-        await video.play();
-      }
+      // Start temp audio playback
+      await tempAudio.play();
 
       // Wait for capture duration
       await new Promise<void>((resolve) => {
@@ -374,9 +398,12 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
         }, captureDuration * 1000);
       });
 
-      // Stop capture
-      video.pause();
+      // Stop temp audio and cleanup
+      tempAudio.pause();
+      processor.disconnect();
+      source.disconnect();
       audioContext.close();
+      tempAudio.remove();
 
       // Combine captured chunks
       const totalSamples = capturedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -401,10 +428,6 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      // Return to original position
-      video.currentTime = originalTime;
-      
-      console.log(`Audio captured for time range ${captureStart.toFixed(1)}s - ${captureEnd.toFixed(1)}s`);
       setState(prev => ({ ...prev, isCapturingTimeRange: false, error: null }));
 
     } catch (error) {
@@ -414,13 +437,6 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
         isCapturingTimeRange: false,
         error: error instanceof Error ? error.message : 'Failed to capture audio for time range' 
       }));
-
-      // Return to original position on error
-      try {
-        videoRef.current!.currentTime = originalTime;
-      } catch (seekError) {
-        console.error('Error returning to original position:', seekError);
-      }
     }
   }, [state.isSupported, state.isCapturingTimeRange, createWavFile, videoRef]);
 
@@ -433,6 +449,19 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
       initializeBuffer(audioContextRef.current.sampleRate, duration);
     }
   }, [state.isRecording, initializeBuffer]);
+
+  // Clear error state
+  const clearError = useCallback(() => {
+    console.log('Clearing audio recording error');
+    setState(prev => ({ ...prev, error: null }));
+  }, []);
+
+  // Log state changes
+  useEffect(() => {
+    if (state.error) {
+      console.log('Audio recording error set:', state.error);
+    }
+  }, [state.error]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -448,6 +477,7 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
     downloadBufferedAudio,
     copyAudioDataUrl,
     setBufferDuration,
-    captureTimeRange
+    captureTimeRange,
+    clearError
   };
 }; 
