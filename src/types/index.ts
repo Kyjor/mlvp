@@ -18,6 +18,32 @@ export interface SubtitlePosition {
 
 export interface DragState {
   isDragging: boolean;
-  startPos: { x: number; y: number };
-  initialPos: { x: number; y: number };
+  startX: number;
+  startY: number;
+  initialX: number;
+  initialY: number;
+  initialWidth: number;
+  initialHeight: number;
+}
+
+// New types for caching
+export interface CachedSubtitleTrack {
+  id: string;
+  label: string;
+  src: string; // Store the data URL (which contains VTT content)
+}
+
+export interface CachedSubtitleSettings {
+  position: SubtitlePosition;
+  size: number;
+  offset: number;
+}
+
+export interface CachedPlayerData {
+  videoFileIdentifier: string | null; // Could be fileName for local files
+  lastCurrentTime: number;
+  subtitleTracks: CachedSubtitleTrack[];
+  activeSubtitleId: string | null;
+  subtitleSettings: CachedSubtitleSettings;
+  // We can add more here, like volume, playback rate, etc. in the future
 } 

@@ -1,101 +1,148 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SubtitlePosition, DragState } from '../types';
 
-export const useSubtitleCustomization = () => {
-  const [subtitlePosition, setSubtitlePosition] = useState<SubtitlePosition>({ x: 50, y: 85 });
-  const [subtitleSize, setSubtitleSize] = useState(100);
-  const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
-  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
-  const [initialSubtitlePos, setInitialSubtitlePos] = useState({ x: 0, y: 0 });
-  
+const INITIAL_POSITION: SubtitlePosition = { x: 50, y: 10 }; // % from bottom
+const INITIAL_SIZE = 100; // percentage
+
+interface UseSubtitleCustomizationProps {
+  initialPosition?: SubtitlePosition;
+  initialSize?: number;
+}
+
+export const useSubtitleCustomization = (props?: UseSubtitleCustomizationProps) => {
+  const [subtitlePosition, setSubtitlePosition] = useState<SubtitlePosition>(
+    props?.initialPosition || INITIAL_POSITION
+  );
+  const [subtitleSize, setSubtitleSize] = useState<number>(
+    props?.initialSize || INITIAL_SIZE
+  );
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [isHoveringSubtitle, setIsHoveringSubtitle] = useState(false);
+
   const subtitleRef = useRef<HTMLDivElement>(null);
-  const videoWrapperRef = useRef<HTMLDivElement>(null);
+  const videoWrapperRef = useRef<HTMLDivElement>(null); // For boundary checks
 
-  // Subtitle interaction handlers
-  const handleSubtitleMouseDown = (e: React.MouseEvent) => {
-    if (subtitleRef.current && videoWrapperRef.current) {
-      e.preventDefault();
-      setIsDraggingSubtitle(true);
-      setDragStartPos({ x: e.clientX, y: e.clientY });
-      setInitialSubtitlePos({ x: subtitlePosition.x, y: subtitlePosition.y });
-    }
-  };
+  const resetPosition = useCallback(() => setSubtitlePosition(INITIAL_POSITION), []);
+  const resetSize = useCallback(() => setSubtitleSize(INITIAL_SIZE), []);
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDraggingSubtitle && videoWrapperRef.current) {
-      const deltaX = e.clientX - dragStartPos.x;
-      const deltaY = e.clientY - dragStartPos.y;
+  const handleSubtitleMouseDown = useCallback((event: React.MouseEvent) => {
+    if (!subtitleRef.current || !videoWrapperRef.current) return;
+
+    const rect = subtitleRef.current.getBoundingClientRect();
+    const wrapperRect = videoWrapperRef.current.getBoundingClientRect();
+
+    // Check if the click is on the subtitle text itself, not empty space within the overlay if it's wider.
+    // This requires the subtitle text to be wrapped in an element that we can check.
+    // For simplicity, we assume direct click on the draggable area for now.
+
+    setDragState({
+      isDragging: true,
+      startX: event.clientX,
+      startY: event.clientY,
+      initialX: rect.left - wrapperRect.left, // Position relative to wrapper
+      initialY: rect.top - wrapperRect.top,
+      initialWidth: rect.width,
+      initialHeight: rect.height,
+    });
+  }, []);
+
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    if (!dragState || !dragState.isDragging || !subtitleRef.current || !videoWrapperRef.current) return;
+
+    const dx = event.clientX - dragState.startX;
+    const dy = event.clientY - dragState.startY;
+    const wrapperRect = videoWrapperRef.current.getBoundingClientRect();
+
+    if (event.ctrlKey) { // Positioning
+      let newX = dragState.initialX + dx;
+      let newY = dragState.initialY + dy;
+
+      // Convert to percentage relative to the video wrapper
+      // X is relative to video wrapper width, Y is relative to video wrapper height for position
+      // The subtitle 'left' is relative to its center, so we adjust
+      // The subtitle 'bottom' is from the bottom of the wrapper.
       
-      // Check if Control key is held for position moving
-      if (e.ctrlKey) {
-        // Position movement (existing behavior)
-        const rect = videoWrapperRef.current.getBoundingClientRect();
-        const deltaXPercent = (deltaX / rect.width) * 100;
-        const deltaYPercent = (deltaY / rect.height) * 100;
-        
-        const newX = Math.max(0, Math.min(100, initialSubtitlePos.x + deltaXPercent));
-        const newY = Math.max(0, Math.min(100, initialSubtitlePos.y + deltaYPercent));
-        
-        setSubtitlePosition({ x: newX, y: newY });
-      } else {
-        // Size adjustment based on drag direction
-        // Up/Right = bigger, Down/Left = smaller
-        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-        const direction = deltaX + (-deltaY); // Up and Right are positive
-        
-        // Scale factor based on distance and direction
-        const scaleFactor = distance * 0.2; // Adjust sensitivity
-        const sizeChange = direction > 0 ? scaleFactor : -scaleFactor;
-        
-        // Apply size change from initial size (100%)
-        const newSize = Math.max(50, Math.min(200, 100 + sizeChange));
-        setSubtitleSize(newSize);
-      }
-    }
-  };
+      const newSubtitleXPercent = ((newX + dragState.initialWidth / 2) / wrapperRect.width) * 100;
+      const newSubtitleBottomPercent = ((wrapperRect.height - (newY + dragState.initialHeight)) / wrapperRect.height) * 100;
 
-  const handleMouseUp = () => {
-    setIsDraggingSubtitle(false);
-  };
+      setSubtitlePosition({
+        x: Math.max(0, Math.min(100, newSubtitleXPercent)),
+        y: Math.max(0, Math.min(100, newSubtitleBottomPercent)),
+      });
 
-  const handleSubtitleWheel = (e: React.WheelEvent) => {
-    // Only resize if Control key is held
-    if (e.ctrlKey) {
-      e.preventDefault();
-      const delta = -e.deltaY; // Invert for natural scroll behavior
-      const sizeChange = delta > 0 ? 5 : -5;
-      const newSize = Math.max(50, Math.min(200, subtitleSize + sizeChange));
+    } else { // Resizing
+      // Calculate change relative to the center of the subtitle for intuitive scaling
+      const currentRect = subtitleRef.current.getBoundingClientRect();
+      const centerX = currentRect.left + currentRect.width / 2;
+      const centerY = currentRect.top + currentRect.height / 2;
+
+      // Determine dominant drag direction for resizing
+      // If moving more horizontally away from center -> increase width/size
+      // If moving more vertically away from center -> increase height/size
+      // Simplified: use combined distance or primary axis
+      const changeX = event.clientX - centerX;
+      const changeY = event.clientY - centerY;
+      
+      // Original distance from center to mouse down point for relative scaling factor
+      const initialDistX = dragState.startX - (dragState.initialX + dragState.initialWidth / 2);
+      const initialDistY = dragState.startY - (dragState.initialY + dragState.initialHeight / 2);
+      
+      const baseSizeForScaling = 100; // Assuming 100% is the reference
+      
+      // Consider the drag vector relative to the subtitle center
+      // A drag to the right or up from center should increase size
+      // A drag to the left or down from center should decrease size
+      
+      // Calculate scale factor based on mouse movement from initial drag point
+      // Simplified scaling: change in X has more impact
+      const scaleMultiplier = (dx - dy) / 100; // dx for right/up, dy for down/left (inverted)
+      let newSize = subtitleSize * (1 + scaleMultiplier);
+      newSize = Math.max(10, Math.min(500, newSize)); // Clamp size between 10% and 500%
       setSubtitleSize(newSize);
+      
+      // Update dragState start for continuous scaling
+      setDragState(prev => prev ? {...prev, startX: event.clientX, startY: event.clientY } : null);
     }
-  };
+  }, [dragState, subtitleSize]);
 
-  // Event listeners for mouse movement and release
+  const handleMouseUp = useCallback(() => {
+    if (dragState && dragState.isDragging) {
+      setDragState(null);
+    }
+  }, [dragState]);
+
+  const handleSubtitleWheel = useCallback((event: React.WheelEvent) => {
+    if (event.ctrlKey) {
+      event.preventDefault();
+      const scaleAmount = event.deltaY * -0.1; // Adjust multiplier for sensitivity
+      setSubtitleSize(prevSize => Math.max(10, Math.min(500, prevSize + scaleAmount)));
+    }
+  }, []);
+
   useEffect(() => {
-    if (isDraggingSubtitle) {
+    if (dragState && dragState.isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-      
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDraggingSubtitle, dragStartPos, initialSubtitlePos]);
-
-  const resetPosition = () => setSubtitlePosition({ x: 50, y: 85 });
-  const resetSize = () => setSubtitleSize(100);
+  }, [dragState, handleMouseMove, handleMouseUp]);
 
   return {
     subtitlePosition,
+    setSubtitlePosition, // Expose setter if needed externally, e.g., for caching
     subtitleSize,
-    isDraggingSubtitle,
+    setSubtitleSize, // Expose setter for caching
+    isDraggingSubtitle: !!dragState?.isDragging,
     subtitleRef,
-    videoWrapperRef,
-    handleSubtitleMouseDown,
-    handleSubtitleWheel,
+    videoWrapperRef, // Expose for App.tsx to assign
     resetPosition,
     resetSize,
-    setSubtitlePosition,
-    setSubtitleSize
+    handleSubtitleMouseDown,
+    handleSubtitleWheel,
+    isHoveringSubtitle,
+    setIsHoveringSubtitle,
   };
 }; 

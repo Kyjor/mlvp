@@ -8,6 +8,7 @@ interface FileDropZoneProps {
   onFileInputClick: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  customMessage?: string;
 }
 
 export const FileDropZone: React.FC<FileDropZoneProps> = ({
@@ -17,7 +18,8 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
   onDrop,
   onFileInputClick,
   fileInputRef,
-  onFileSelect
+  onFileSelect,
+  customMessage
 }) => {
   return (
     <div
@@ -28,8 +30,17 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
       onClick={onFileInputClick}
     >
       <div className="drop-zone-content">
-        <p>Drag and drop video and subtitle files here</p>
-        <p>or click to select files</p>
+        {customMessage ? (
+          <>
+            <p style={{ color: '#6f42c1', fontWeight: '600' }}>🔄 Restore Session</p>
+            <p>{customMessage}</p>
+          </>
+        ) : (
+          <>
+            <p>Drag and drop video and subtitle files here</p>
+            <p>or click to select files</p>
+          </>
+        )}
         <p className="supported-formats">
           Videos: MP4, WebM, MKV, MOV, AVI, and more
         </p>

@@ -28,19 +28,29 @@ export const useVideoPlayer = () => {
     }
   }, []);
 
-  const processVideoFile = useCallback(async (file: File) => {
+  const processVideoFile = useCallback(async (file: File, initialTime?: number) => {
     setVideoError(null);
     try {
+      // Revoke previous object URL if it exists
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
       const url = URL.createObjectURL(file);
       setVideoUrl(url);
       setFileName(file.name);
-      setIsPlaying(false); // Don't autoplay new video
-      setCurrentTime(0);
+      setIsPlaying(false); 
+      setCurrentTime(initialTime || 0); // Set initial time or 0
+
+      if (videoRef.current) {
+        videoRef.current.currentTime = initialTime || 0; // Seek to initial time
+        // Autoplay is not set here, user will need to press play
+      }
+      
     } catch (error) {
       console.error("Failed to process video:", error);
       setVideoError("Failed to load video file.");
     }
-  }, []);
+  }, [videoUrl]); // Added videoUrl to dependencies to revoke old URL
 
   const resetVideoState = useCallback(() => {
     if (videoUrl) {
@@ -51,6 +61,10 @@ export const useVideoPlayer = () => {
     setIsPlaying(false);
     setVideoError(null);
     setCurrentTime(0);
+    if (videoRef.current) {
+      videoRef.current.src = ""; // Clear the src attribute
+      videoRef.current.load(); // Reset the media element
+    }
   }, [videoUrl]);
 
   return {
