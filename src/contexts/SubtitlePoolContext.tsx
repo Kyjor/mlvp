@@ -181,9 +181,12 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const captureBtn = element.querySelector('.subtitle-capture-btn') as HTMLButtonElement;
         if (captureBtn && onCaptureAudio) {
           captureBtn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onCaptureAudio(cue.startTime, cue.endTime);
+            // Only prevent/stop if the capture button itself was clicked
+            if (e.target === captureBtn) {
+              e.preventDefault();
+              e.stopPropagation();
+              onCaptureAudio(cue.startTime, cue.endTime);
+            }
           };
         }
       } else { // Should not be visible

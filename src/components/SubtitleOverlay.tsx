@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { SubtitleCue, SubtitlePosition } from '../types';
 import { filterParentheticalText, colorizeJapaneseText } from '../utils/subtitleParser';
+import { DictionaryModal } from './DictionaryModal';
+import { lookupKanjiBeginning } from '../utils/jmdict';
 
 interface SubtitleOverlayProps {
   currentCues: SubtitleCue[];
@@ -27,6 +29,13 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
 }) => {
   const [colorizedCues, setColorizedCues] = useState<{ cue: SubtitleCue; colorizedText: string }[]>([]);
 
+  // Dictionary lookup state
+  const [selectedText, setSelectedText] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [lookupResults, setLookupResults] = useState<any[]>([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState('');
+
   // Process cues for Japanese colorization
   useEffect(() => {
     const processCurrentCues = async () => {
@@ -39,27 +48,65 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
       );
       setColorizedCues(processed);
     };
-
     processCurrentCues();
   }, [currentCues]);
 
-  const handleSubtitleClick = async (event: React.MouseEvent) => {
-    if (event.ctrlKey && event.detail === 2) { // Ctrl+Double Click
-      event.preventDefault(); // Prevent any default ctrl+double click behavior
-      event.stopPropagation(); // Stop event from bubbling to onMouseDown if it's on the same element
+  // Helper to check if a node is or is inside a container
+  function nodeIsOrInside(node: Node | null, container: HTMLElement | null): boolean {
+    if (!node || !container) return false;
+    if (node === container) return true;
+    return nodeIsOrInside((node as any).parentNode, container);
+  }
 
-      // Find the specific subtitle line that was clicked
+  // Lookup handler
+  const handleLookup = async (text: string) => {
+    setModalOpen(true);
+    setLookupLoading(true);
+    setLookupError('');
+    setLookupResults([]);
+    try {
+      const results = await lookupKanjiBeginning(text, 5);
+      setLookupResults(results);
+    } catch (e) {
+      setLookupError('Lookup failed');
+    }
+    setLookupLoading(false);
+  };
+
+  // Close modal handler
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setLookupResults([]);
+    setLookupError('');
+    setLookupLoading(false);
+    setSelectedText('');
+  };
+
+  const handleSubtitleClick = async (event: React.MouseEvent) => {
+    if (event.shiftKey) {
+      // Shift+Click: dictionary lookup for selected text
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        const anchorNode = selection.anchorNode;
+        if (nodeIsOrInside(anchorNode, subtitleRef.current)) {
+          const text = selection.toString().trim();
+          setSelectedText(text);
+          handleLookup(text);
+          return;
+        }
+      }
+    }
+    if (event.ctrlKey && event.detail === 2) { // Ctrl+Double Click
+      event.preventDefault();
+      event.stopPropagation();
       const target = event.target as HTMLElement;
       const clickedLine = target.closest('.subtitle-line-container') as HTMLElement;
-      
       if (clickedLine) {
         const segment = clickedLine.querySelector('.subtitle-segment');
         if (segment) {
-          // Create a temporary element to parse HTML and extract text content
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = segment.innerHTML;
           const subtitleText = tempDiv.textContent || tempDiv.innerText || "";
-          
           if (subtitleText) {
             try {
               const filteredText = filterParentheticalText(subtitleText);
@@ -71,14 +118,11 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
           }
         }
       } else {
-        // Fallback: if no specific line was clicked, copy all current cues
         const subtitleTextToCopy = currentCues.map(cue => {
-          // Create a temporary element to parse HTML and extract text content
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = cue.text; 
           return tempDiv.textContent || tempDiv.innerText || "";
         }).join('\n');
-
         if (subtitleTextToCopy) {
           try {
             const filteredText = filterParentheticalText(subtitleTextToCopy);
@@ -89,8 +133,7 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
           }
         }
       }
-    } else if (!event.ctrlKey && !event.altKey) {
-      // Only trigger drag if no modifier keys are pressed
+    } else if (!event.ctrlKey && !event.altKey && !event.shiftKey) {
       onMouseDown(event);
     }
   };
@@ -98,93 +141,98 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
   const handleCaptureClick = (event: React.MouseEvent, cue: SubtitleCue) => {
     event.preventDefault();
     event.stopPropagation();
-    
     if (onCaptureAudio && !isCapturingAudio) {
       onCaptureAudio(cue.startTime, cue.endTime);
     }
   };
 
-  if (colorizedCues.length === 0 && !isDraggingSubtitle) { // Keep it visible if dragging, even if cues disappear
+  if (colorizedCues.length === 0 && !isDraggingSubtitle) {
     return null;
   }
 
   const overlayStyle: React.CSSProperties = {
     position: 'absolute',
     left: `${subtitlePosition.x}%`,
-    bottom: `${subtitlePosition.y}%`, // Using bottom for positioning from the VTT standard (line property)
-    transform: 'translateX(-50%)', // Center horizontally
-    width: 'auto', // Fit content
-    maxWidth: '90%', // Prevent from being too wide
-    pointerEvents: 'auto', // Allow clicks and drags
+    bottom: `${subtitlePosition.y}%`,
+    transform: 'translateX(-50%)',
+    width: 'auto',
+    maxWidth: '90%',
+    pointerEvents: 'auto',
     cursor: isDraggingSubtitle ? 'grabbing' : 'grab',
     zIndex: 10,
-    display: 'flex', // Use flex to center the content within if needed
+    display: 'flex',
     justifyContent: 'center',
-    alignItems: 'flex-end', // Align to bottom, typical for subtitles
+    alignItems: 'flex-end',
   };
 
   const windowStyle: React.CSSProperties = {
     transform: `scale(${subtitleSize / 100})`,
-    transformOrigin: 'bottom center', // Scale from bottom center
+    transformOrigin: 'bottom center',
     transition: isDraggingSubtitle ? 'none' : 'transform 0.1s ease-out',
     textAlign: 'center',
-    width: 'auto', // Allow the window to fit its content
-    display: 'inline-block', // Important for width:auto and proper scaling of background
-    overflow: 'visible', // Ensure scaled content isn't clipped by this div
+    width: 'auto',
+    display: 'inline-block',
+    overflow: 'visible',
   };
-  
-  // The main div captures mouse down for dragging and wheel for precise resizing
-  // The inner div captures shift+click for copying
+
   return (
-    <div
-      ref={subtitleRef}
-      className="subtitle-overlay-container"
-      style={overlayStyle}
-      onMouseDown={onMouseDown} // For dragging the entire overlay
-      onWheel={onWheel} // For resizing via Ctrl+Scroll on the overlay
-      role="region" // More appropriate role for a region displaying subtitles
-      aria-live="polite"
-      aria-label="Subtitles display area"
-      title={colorizedCues.length > 0 ? "Ctrl+Double Click to copy. Ctrl+Drag to move. Alt+Drag Up/Right to resize." : "Subtitle controls: Ctrl+Drag to move. Alt+Drag Up/Right to resize."}
-    >
-      {isDraggingSubtitle && (
-        <div className="subtitle-drag-hint">
-          {/* Hint can be more dynamic based on ctrlKey if needed */}
-          { (subtitleRef.current?.style.cursor === 'grabbing') /* A bit of a hack, better to pass drag mode */
-            ? "Moving Subtitles"
-            : "Resizing Subtitles"}
-        </div>
-      )}
-      {/* This inner div is specifically for the subtitle text and its click handler */}
-      <div 
-        className="subtitle-window"
-        style={windowStyle} 
-        onClick={handleSubtitleClick} // Shift+Click for copying is on the text window itself
-        role="button" // Semantically, clicking it does something
-        tabIndex={0} // Make it focusable for accessibility
-        aria-label={colorizedCues.length > 0 ? `Current subtitle: ${colorizedCues.map(c => c.cue.text).join(' ')}` : "No active subtitle"}
+    <>
+      <div
+        ref={subtitleRef}
+        className="subtitle-overlay-container"
+        style={overlayStyle}
+        onMouseDown={onMouseDown}
+        onWheel={onWheel}
+        onClick={handleSubtitleClick}
+        role="region"
+        aria-live="polite"
+        aria-label="Subtitles display area"
+        title={colorizedCues.length > 0 ? "Ctrl+Double Click to copy. Shift+Click to look up. Ctrl+Drag to move. Alt+Drag Up/Right to resize." : "Subtitle controls: Ctrl+Drag to move. Alt+Drag Up/Right to resize."}
       >
-        <div className="subtitle-content">
-          {colorizedCues.map((item, index) => (
-            <div key={index} className="subtitle-line-container">
-              <span className="subtitle-line">
-                <span className="subtitle-segment" dangerouslySetInnerHTML={{ __html: item.colorizedText }} />
-              </span>
-              {onCaptureAudio && (
-                <button 
-                  className={`subtitle-capture-btn ${isCapturingAudio ? 'capturing' : ''}`}
-                  onClick={(e) => handleCaptureClick(e, item.cue)}
-                  disabled={isCapturingAudio}
-                  title={`Capture audio for this line (${item.cue.startTime.toFixed(1)}s - ${item.cue.endTime.toFixed(1)}s ± 2s)`}
-                  aria-label="Capture audio for this subtitle line"
-                >
-                  {isCapturingAudio ? '⏺️' : '🎤'}
-                </button>
-              )}
-            </div>
-          ))}
+        {isDraggingSubtitle && (
+          <div className="subtitle-drag-hint">
+            { (subtitleRef.current?.style.cursor === 'grabbing')
+              ? "Moving Subtitles"
+              : "Resizing Subtitles"}
+          </div>
+        )}
+        <div 
+          className="subtitle-window"
+          style={windowStyle} 
+          role="button"
+          tabIndex={0}
+          aria-label={colorizedCues.length > 0 ? `Current subtitle: ${colorizedCues.map(c => c.cue.text).join(' ')}` : "No active subtitle"}
+        >
+          <div className="subtitle-content">
+            {colorizedCues.map((item, index) => (
+              <div key={index} className="subtitle-line-container">
+                <span className="subtitle-line">
+                  <span className="subtitle-segment" dangerouslySetInnerHTML={{ __html: item.colorizedText }} />
+                </span>
+                {onCaptureAudio && (
+                  <button 
+                    className={`subtitle-capture-btn ${isCapturingAudio ? 'capturing' : ''}`}
+                    onClick={(e) => handleCaptureClick(e, item.cue)}
+                    disabled={isCapturingAudio}
+                    title={`Capture audio for this line (${item.cue.startTime.toFixed(1)}s - ${item.cue.endTime.toFixed(1)}s ± 2s)`}
+                    aria-label="Capture audio for this subtitle line"
+                  >
+                    {isCapturingAudio ? '⏺️' : '🎤'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+      <DictionaryModal
+        open={modalOpen}
+        onClose={handleModalClose}
+        word={selectedText}
+        results={lookupResults}
+        loading={lookupLoading}
+        error={lookupError}
+      />
+    </>
   );
 };
