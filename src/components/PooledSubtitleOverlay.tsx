@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { SubtitlePosition } from '../types';
 import { useSubtitlePool } from '../contexts/SubtitlePoolContext';
+import { filterParentheticalText } from '../utils/subtitleParser';
 
 interface PooledSubtitleOverlayProps {
   currentTime: number;
@@ -67,8 +68,9 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
           
           if (subtitleText) {
             try {
-              await navigator.clipboard.writeText(subtitleText);
-              console.log('Subtitle copied to clipboard:', subtitleText);
+              const filteredText = filterParentheticalText(subtitleText);
+              await navigator.clipboard.writeText(filteredText);
+              console.log('Subtitle copied to clipboard:', filteredText);
             } catch (err) {
               console.error('Failed to copy subtitle to clipboard:', err);
             }

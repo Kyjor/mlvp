@@ -1,5 +1,6 @@
 import React from 'react';
 import { SubtitleCue, SubtitlePosition } from '../types';
+import { filterParentheticalText } from '../utils/subtitleParser';
 
 interface SubtitleOverlayProps {
   currentCues: SubtitleCue[];
@@ -44,8 +45,9 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
           
           if (subtitleText) {
             try {
-              await navigator.clipboard.writeText(subtitleText);
-              console.log('Subtitle copied to clipboard:', subtitleText);
+              const filteredText = filterParentheticalText(subtitleText);
+              await navigator.clipboard.writeText(filteredText);
+              console.log('Subtitle copied to clipboard:', filteredText);
             } catch (err) {
               console.error('Failed to copy subtitle to clipboard:', err);
             }
@@ -62,8 +64,9 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
 
         if (subtitleTextToCopy) {
           try {
-            await navigator.clipboard.writeText(subtitleTextToCopy);
-            console.log('Subtitle copied to clipboard:', subtitleTextToCopy);
+            const filteredText = filterParentheticalText(subtitleTextToCopy);
+            await navigator.clipboard.writeText(filteredText);
+            console.log('Subtitle copied to clipboard:', filteredText);
           } catch (err) {
             console.error('Failed to copy subtitle to clipboard:', err);
           }
@@ -148,7 +151,7 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
           {currentCues.map((cue, index) => (
             <div key={index} className="subtitle-line-container">
               <span className="subtitle-line">
-                <span className="subtitle-segment" dangerouslySetInnerHTML={{ __html: cue.text }} />
+                <span className="subtitle-segment" dangerouslySetInnerHTML={{ __html: filterParentheticalText(cue.text) }} />
               </span>
               {onCaptureAudio && (
                 <button 

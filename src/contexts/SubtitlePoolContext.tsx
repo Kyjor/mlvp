@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useRef, useCallback, useEffect } from 'react';
 import { SubtitleCue } from '../types';
+import { filterParentheticalText } from '../utils/subtitleParser';
 
 interface SubtitleElement {
   id: string;
@@ -79,7 +80,7 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Create subtitle segment with content
       const subtitleSegment = document.createElement('span');
       subtitleSegment.className = 'subtitle-segment';
-      subtitleSegment.innerHTML = cue.text;
+      subtitleSegment.innerHTML = filterParentheticalText(cue.text);
       
       // Create capture button
       const captureBtn = document.createElement('button');

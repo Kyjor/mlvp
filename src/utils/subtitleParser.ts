@@ -62,4 +62,13 @@ export const getActiveCues = (cues: SubtitleCue[], currentTime: number): Subtitl
   return cues.filter(cue => 
     currentTime >= cue.startTime && currentTime <= cue.endTime
   );
+};
+
+export const filterParentheticalText = (text: string): string => {
+  // Remove text wrapped in parentheses, including the parentheses themselves
+  // This regex matches both ASCII () and full-width （） parentheses commonly used in Japanese text
+  return text
+    .replace(/\([^)]*\)/g, '') // ASCII parentheses
+    .replace(/（[^）]*）/g, '') // Full-width parentheses (Japanese)
+    .trim();
 }; 
