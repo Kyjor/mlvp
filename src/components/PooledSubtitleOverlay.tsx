@@ -21,6 +21,7 @@ interface PooledSubtitleOverlayProps {
   onMouseDown: (e: React.MouseEvent) => void;
   onWheel: (e: React.WheelEvent) => void;
   onCaptureAudio?: (startTime: number, endTime: number) => void;
+  captureDictionaryAudio?: (startTime: number, endTime: number) => Promise<string>;
 }
 
 export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
@@ -38,6 +39,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
   onMouseDown,
   onWheel,
   onCaptureAudio,
+  captureDictionaryAudio,
 }) => {
   const { getPoolContainer, updateVisibleSubtitles } = useSubtitlePool();
 
@@ -46,6 +48,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
   const [sourceText, setSourceText] = useState('');
   const [secondarySourceText, setSecondarySourceText] = useState('');
   const [screenshot, setScreenshot] = useState<string>('');
+  const [audioData, setAudioData] = useState<string>('');
   const [modalOpen, setModalOpen] = useState(false);
   const [lookupResults, setLookupResults] = useState<any[]>([]);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -97,6 +100,33 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
     }
   }, [videoRef]);
 
+  // Get current subtitle timing for audio capture
+  const getCurrentSubtitleTiming = useCallback((): { startTime: number; endTime: number } | null => {
+    if (!subtitleRef.current) return null;
+    
+    // Find the currently visible primary subtitle
+    const primarySubtitles = subtitleRef.current.querySelectorAll('.pooled-subtitle.primary-subtitle');
+    
+    for (const subtitle of primarySubtitles) {
+      const element = subtitle as HTMLElement;
+      if (element.style.display === 'flex') {
+        // Try to extract timing from the element's data or reconstruct from current context
+        // Since we don't have direct access to cue data here, we'll use a reasonable default
+        // This would ideally be passed down as context or extracted from the subtitle pool
+        return { 
+          startTime: Math.max(0, currentTime - 3), 
+          endTime: currentTime + 3 
+        };
+      }
+    }
+    
+    // Fallback: use current time ± 2 seconds
+    return { 
+      startTime: Math.max(0, currentTime - 2), 
+      endTime: currentTime + 2 
+    };
+  }, [subtitleRef, currentTime]);
+
   // Lookup handler
   const handleLookup = async (text: string) => {
     setModalOpen(true);
@@ -107,6 +137,21 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
     // Capture screenshot
     const screenshotData = captureVideoScreenshot();
     setScreenshot(screenshotData);
+    
+    // Capture audio if function is available
+    let audioDataUrl = '';
+    if (captureDictionaryAudio) {
+      try {
+        const timing = getCurrentSubtitleTiming();
+        if (timing) {
+          audioDataUrl = await captureDictionaryAudio(timing.startTime, timing.endTime);
+          setAudioData(audioDataUrl);
+        }
+      } catch (error) {
+        console.error('Failed to capture audio:', error);
+        // Don't fail the entire lookup if audio capture fails
+      }
+    }
     
     try {
       const results = await lookupKanjiBeginning(text, 5);
@@ -127,6 +172,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
     setSourceText('');
     setSecondarySourceText('');
     setScreenshot('');
+    setAudioData('');
   };
 
   // Helper to select word at click position
@@ -345,6 +391,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
         sourceText={sourceText}
         secondarySourceText={secondarySourceText}
         screenshot={screenshot}
+        audioData={audioData}
       />
     </>
   );

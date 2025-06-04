@@ -35,9 +35,10 @@ export interface DictionaryModalProps {
   sourceText?: string;
   secondarySourceText?: string;
   screenshot?: string; // Base64 data URL
+  audioData?: string; // Base64 data URL for audio
 }
 
-export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose, word, results, loading, error, sourceText, secondarySourceText, screenshot }) => {
+export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose, word, results, loading, error, sourceText, secondarySourceText, screenshot, audioData }) => {
   if (!open) return null;
   
   // Helper function to copy text to clipboard
@@ -63,6 +64,16 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
       ]);
     } catch (err) {
       console.error('Failed to copy image to clipboard:', err);
+    }
+  };
+
+  // Helper function to copy audio to clipboard
+  const copyAudioToClipboard = async (dataUrl: string) => {
+    try {
+      // Copy audio as text (data URL) since audio clipboard support is limited
+      await navigator.clipboard.writeText(dataUrl);
+    } catch (err) {
+      console.error('Failed to copy audio to clipboard:', err);
     }
   };
 
@@ -138,6 +149,38 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
         <h2>Dictionary Lookup: <span style={{color: '#0066cc'}}>{word}</span></h2>
         <button style={closeButtonStyle} onClick={onClose}>×</button>
         
+        {/* Audio */}
+        {audioData && (
+          <div style={{
+            marginBottom: '12px',
+            padding: '12px',
+            backgroundColor: '#f0fff0',
+            borderRadius: '6px',
+            borderLeft: '4px solid #28a745'
+          }}>
+            <div style={{fontSize: '14px', color: '#666', marginBottom: '8px'}}>
+              Sentence audio:
+              <button 
+                style={copyButtonStyle}
+                onClick={() => copyAudioToClipboard(audioData)}
+                title="Copy audio data URL"
+              >
+                📋
+              </button>
+            </div>
+            <audio 
+              controls 
+              src={audioData}
+              style={{
+                width: '100%',
+                height: '40px'
+              }}
+            >
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        )}
+
         {/* Screenshot */}
         {screenshot && (
           <div style={{

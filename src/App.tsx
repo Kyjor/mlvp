@@ -356,6 +356,7 @@ function App() {
             onSecondaryOffsetChange={subtitleManagerHook.updateSecondarySubtitleOffset}
             onCaptureAudio={audioRecordingHook.captureTimeRange}
             onToggleBlurSecondary={setBlurSecondarySubtitle}
+            captureDictionaryAudio={audioRecordingHook.captureDictionaryAudio}
           />
           
           <div className="video-controls">

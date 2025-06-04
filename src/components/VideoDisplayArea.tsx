@@ -44,6 +44,7 @@ interface VideoDisplayAreaProps {
   onSecondaryOffsetChange: (newOffset: number) => void;
   onCaptureAudio?: (startTime: number, endTime: number) => void;
   onToggleBlurSecondary: (enabled: boolean) => void;
+  captureDictionaryAudio?: (startTime: number, endTime: number) => Promise<string>;
 }
 
 export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
@@ -85,6 +86,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onSecondaryOffsetChange,
   onCaptureAudio,
   onToggleBlurSecondary,
+  captureDictionaryAudio,
 }) => {
   if (!videoUrl) return null; // Should not happen if App.tsx logic is correct
 
@@ -208,6 +210,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
             onWheel={onSubtitleWheel}
             onCaptureAudio={onCaptureAudio}
             blurSecondary={blurSecondary}
+            captureDictionaryAudio={captureDictionaryAudio}
           />
         </div>
       </div>

@@ -440,6 +440,251 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
     }
   }, [state.isSupported, state.isCapturingTimeRange, createWavFile, videoRef]);
 
+  // Capture audio for dictionary lookup (returns data URL instead of downloading)
+  const captureDictionaryAudio = useCallback(async (startTime: number, endTime: number, bufferSeconds: number = 1): Promise<string> => {
+    if (!state.isSupported || !videoRef.current) {
+      throw new Error('Audio capture not supported or no video available');
+    }
+
+    const video = videoRef.current;
+    const captureStart = Math.max(0, startTime - bufferSeconds);
+    const captureEnd = Math.min(video.duration || endTime + bufferSeconds, endTime + bufferSeconds);
+    const captureDuration = captureEnd - captureStart;
+
+    if (captureDuration <= 0) {
+      throw new Error('Invalid time range for capture');
+    }
+
+    // Save current video state
+    const originalTime = video.currentTime;
+    const wasPlaying = !video.paused;
+    const originalVolume = video.volume;
+
+    try {
+      // Set up audio capture from the main video element
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      
+      // Check if we already have a source node for this video
+      let source: MediaElementAudioSourceNode;
+      try {
+        source = audioContext.createMediaElementSource(video);
+      } catch (error) {
+        // If video already has a source node, we need to handle this differently
+        // For now, fall back to the temp audio approach
+        audioContext.close();
+        return await captureDictionaryAudioFallback(startTime, endTime, bufferSeconds);
+      }
+      
+      const processor = audioContext.createScriptProcessor(4096, 2, 2);
+      
+      const capturedChunks: Float32Array[] = [];
+      const sampleRate = audioContext.sampleRate;
+      
+      processor.onaudioprocess = (event) => {
+        const inputBuffer = event.inputBuffer;
+        const leftChannel = inputBuffer.getChannelData(0);
+        const rightChannel = inputBuffer.numberOfChannels > 1 ? inputBuffer.getChannelData(1) : leftChannel;
+        
+        const monoData = new Float32Array(leftChannel.length);
+        for (let i = 0; i < leftChannel.length; i++) {
+          monoData[i] = (leftChannel[i] + rightChannel[i]) / 2;
+        }
+        
+        capturedChunks.push(new Float32Array(monoData));
+      };
+
+      // Connect audio nodes - ensure video audio still plays through speakers
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+      source.connect(audioContext.destination);
+
+      // Seek to capture start and play
+      video.currentTime = captureStart;
+      video.volume = originalVolume; // Keep original volume for user feedback
+      
+      // Wait for seek to complete
+      await new Promise<void>((resolve) => {
+        const onSeeked = () => {
+          video.removeEventListener('seeked', onSeeked);
+          resolve();
+        };
+        video.addEventListener('seeked', onSeeked);
+      });
+
+      // Start playback for visual feedback
+      await video.play();
+
+      // Wait for capture duration
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, captureDuration * 1000);
+      });
+
+      // Stop capture and cleanup audio nodes
+      video.pause();
+      processor.disconnect();
+      source.disconnect();
+      audioContext.close();
+
+      // Restore original video state
+      video.currentTime = originalTime;
+      video.volume = originalVolume;
+      
+      // Wait for seek back to complete
+      await new Promise<void>((resolve) => {
+        const onSeeked = () => {
+          video.removeEventListener('seeked', onSeeked);
+          resolve();
+        };
+        video.addEventListener('seeked', onSeeked);
+      });
+      
+      // Restore play state
+      if (wasPlaying) {
+        await video.play();
+      }
+
+      // Combine captured chunks
+      const totalSamples = capturedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const combinedBuffer = new Float32Array(totalSamples);
+      let offset = 0;
+      
+      for (const chunk of capturedChunks) {
+        combinedBuffer.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Create WAV file and convert to data URL
+      const wavBlob = createWavFile(combinedBuffer, sampleRate);
+      
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to create audio data URL'));
+        reader.readAsDataURL(wavBlob);
+      });
+
+    } catch (error) {
+      // Restore original video state on error
+      try {
+        video.currentTime = originalTime;
+        video.volume = originalVolume;
+        if (wasPlaying) {
+          await video.play();
+        } else {
+          video.pause();
+        }
+      } catch (restoreError) {
+        console.error('Failed to restore video state:', restoreError);
+      }
+      
+      console.error('Error capturing dictionary audio:', error);
+      throw error instanceof Error ? error : new Error('Failed to capture audio for dictionary');
+    }
+  }, [state.isSupported, createWavFile, videoRef]);
+
+  // Fallback method using temporary audio element (original approach)
+  const captureDictionaryAudioFallback = useCallback(async (startTime: number, endTime: number, bufferSeconds: number = 1): Promise<string> => {
+    if (!state.isSupported || !videoRef.current) {
+      throw new Error('Audio capture not supported or no video available');
+    }
+
+    const video = videoRef.current;
+    const captureStart = Math.max(0, startTime - bufferSeconds);
+    const captureEnd = Math.min(video.duration || endTime + bufferSeconds, endTime + bufferSeconds);
+    const captureDuration = captureEnd - captureStart;
+
+    if (captureDuration <= 0) {
+      throw new Error('Invalid time range for capture');
+    }
+
+    try {
+      // Create a temporary audio element to capture from instead of the video
+      const tempAudio = document.createElement('audio');
+      tempAudio.src = video.src;
+      tempAudio.currentTime = captureStart;
+      tempAudio.crossOrigin = 'anonymous';
+      
+      // Wait for audio to load
+      await new Promise<void>((resolve, reject) => {
+        tempAudio.addEventListener('canplay', () => resolve(), { once: true });
+        tempAudio.addEventListener('error', reject, { once: true });
+        tempAudio.load();
+      });
+
+      // Create audio context and capture from temp audio
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      
+      const source = audioContext.createMediaElementSource(tempAudio);
+      const processor = audioContext.createScriptProcessor(4096, 2, 2);
+      
+      const capturedChunks: Float32Array[] = [];
+      const sampleRate = audioContext.sampleRate;
+      
+      processor.onaudioprocess = (event) => {
+        const inputBuffer = event.inputBuffer;
+        const leftChannel = inputBuffer.getChannelData(0);
+        const rightChannel = inputBuffer.numberOfChannels > 1 ? inputBuffer.getChannelData(1) : leftChannel;
+        
+        const monoData = new Float32Array(leftChannel.length);
+        for (let i = 0; i < leftChannel.length; i++) {
+          monoData[i] = (leftChannel[i] + rightChannel[i]) / 2;
+        }
+        
+        capturedChunks.push(new Float32Array(monoData));
+      };
+
+      // Connect audio nodes
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+      // Start temp audio playback (muted to avoid double audio)
+      tempAudio.volume = 0;
+      await tempAudio.play();
+
+      // Wait for capture duration
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, captureDuration * 1000);
+      });
+
+      // Stop temp audio and cleanup
+      tempAudio.pause();
+      processor.disconnect();
+      source.disconnect();
+      audioContext.close();
+      tempAudio.remove();
+
+      // Combine captured chunks
+      const totalSamples = capturedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const combinedBuffer = new Float32Array(totalSamples);
+      let offset = 0;
+      
+      for (const chunk of capturedChunks) {
+        combinedBuffer.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Create WAV file and convert to data URL
+      const wavBlob = createWavFile(combinedBuffer, sampleRate);
+      
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to create audio data URL'));
+        reader.readAsDataURL(wavBlob);
+      });
+
+    } catch (error) {
+      console.error('Error capturing dictionary audio with fallback:', error);
+      throw error instanceof Error ? error : new Error('Failed to capture audio for dictionary');
+    }
+  }, [state.isSupported, createWavFile, videoRef]);
+
   // Update buffer duration
   const setBufferDuration = useCallback((duration: number) => {
     setState(prev => ({ ...prev, bufferDuration: duration }));
@@ -478,6 +723,7 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
     copyAudioDataUrl,
     setBufferDuration,
     captureTimeRange,
+    captureDictionaryAudio,
     clearError
   };
 }; 
