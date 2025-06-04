@@ -9,11 +9,12 @@ export const SubtitleTimingControl: React.FC<SubtitleTimingControlProps> = ({
   currentOffset,
   onOffsetChange
 }) => {
-  const [inputValue, setInputValue] = useState<string>(currentOffset.toFixed(2));
+  const safeOffset = currentOffset ?? 0;
+  const [inputValue, setInputValue] = useState<string>(safeOffset.toFixed(2));
 
   useEffect(() => {
-    setInputValue(currentOffset.toFixed(2));
-  }, [currentOffset]);
+    setInputValue(safeOffset.toFixed(2));
+  }, [safeOffset]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -25,7 +26,7 @@ export const SubtitleTimingControl: React.FC<SubtitleTimingControlProps> = ({
       onOffsetChange(newOffset);
     } else {
       // Reset to current valid offset if input is invalid
-      setInputValue(currentOffset.toFixed(2));
+      setInputValue(safeOffset.toFixed(2));
     }
   };
   
@@ -37,7 +38,7 @@ export const SubtitleTimingControl: React.FC<SubtitleTimingControlProps> = ({
   };
 
   const adjustOffset = (amount: number) => {
-    const newOffset = parseFloat((currentOffset + amount).toFixed(2));
+    const newOffset = parseFloat((safeOffset + amount).toFixed(2));
     onOffsetChange(newOffset);
   };
 

@@ -11,7 +11,14 @@ interface SubtitleElement {
 
 interface SubtitlePoolContextType {
   createSubtitleElements: (trackId: string, cues: SubtitleCue[]) => void;
-  updateVisibleSubtitles: (currentTime: number, activeTrackId: string | null, subtitleOffset?: number, onCaptureAudio?: (startTime: number, endTime: number) => void) => void;
+  updateVisibleSubtitles: (
+    currentTime: number, 
+    primaryTrackId: string | null, 
+    secondaryTrackId: string | null,
+    primaryOffset?: number, 
+    secondaryOffset?: number,
+    onCaptureAudio?: (startTime: number, endTime: number) => void
+  ) => void;
   getPoolContainer: () => HTMLDivElement;
   clearTrackSubtitles: (trackId: string) => void;
   clearAllSubtitles: () => void;
@@ -102,20 +109,46 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log(`Pool now has ${pool.size} total elements, container has ${container.children.length} children`);
   }, [getPoolContainer]);
 
-  // Update visible subtitles based on current time and active track
-  const updateVisibleSubtitles = useCallback((currentTime: number, activeTrackId: string | null, subtitleOffset: number = 0, onCaptureAudio?: (startTime: number, endTime: number) => void) => {
+  // Update visible subtitles based on current time and active tracks
+  const updateVisibleSubtitles = useCallback((
+    currentTime: number, 
+    primaryTrackId: string | null, 
+    secondaryTrackId: string | null,
+    primaryOffset: number = 0, 
+    secondaryOffset: number = 0,
+    onCaptureAudio?: (startTime: number, endTime: number) => void
+  ) => {
     const pool = poolRef.current;
-    const adjustedTime = currentTime - subtitleOffset;
+    const primaryAdjustedTime = currentTime - primaryOffset;
+    const secondaryAdjustedTime = currentTime - secondaryOffset;
     
     pool.forEach((subtitleElement) => {
       const { cue, element, trackId } = subtitleElement;
-      const shouldBeVisible = trackId === activeTrackId && 
-                             adjustedTime >= cue.startTime && 
-                             adjustedTime <= cue.endTime;
+      
+      let shouldBeVisible = false;
+      let isPrimary = false;
+      
+      // Check if it should be visible as primary track
+      if (trackId === primaryTrackId && 
+          primaryAdjustedTime >= cue.startTime && 
+          primaryAdjustedTime <= cue.endTime) {
+        shouldBeVisible = true;
+        isPrimary = true;
+      }
+      
+      // Check if it should be visible as secondary track
+      if (trackId === secondaryTrackId && 
+          secondaryAdjustedTime >= cue.startTime && 
+          secondaryAdjustedTime <= cue.endTime) {
+        shouldBeVisible = true;
+        isPrimary = false;
+      }
       
       if (shouldBeVisible && !subtitleElement.isVisible) {
         // Show subtitle
         element.style.display = 'flex';
+        element.classList.toggle('primary-subtitle', isPrimary);
+        element.classList.toggle('secondary-subtitle', !isPrimary);
         subtitleElement.isVisible = true;
         
         // Update capture button handler
@@ -130,6 +163,7 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else if (!shouldBeVisible && subtitleElement.isVisible) {
         // Hide subtitle
         element.style.display = 'none';
+        element.classList.remove('primary-subtitle', 'secondary-subtitle');
         subtitleElement.isVisible = false;
       }
     });

@@ -9,12 +9,15 @@ interface VideoDisplayAreaProps {
   isPlaying: boolean;
   subtitleTracks: SubtitleTrack[];
   activeSubtitle: string | null;
+  secondarySubtitle: string | null;
   currentCues: SubtitleCue[];
+  currentSecondaryCues: SubtitleCue[];
   subtitlePosition: SubtitlePosition;
   subtitleSize: number;
   isDraggingSubtitle: boolean;
   isSubtitleDragOver: boolean; 
   subtitleOffset: number;
+  secondarySubtitleOffset: number;
   isCapturingAudio: boolean;
   currentTime?: number;
 
@@ -26,6 +29,7 @@ interface VideoDisplayAreaProps {
   onPlayPauseChange: (isPlaying: boolean) => void;
   onTimeUpdate: (time: number) => void;
   onToggleActiveSubtitle: (trackId: string | null) => void;
+  onToggleSecondarySubtitle: (trackId: string | null) => void;
   onRemoveSubtitleTrack: (trackId: string) => void;
   onResetSubtitlePosition: () => void;
   onResetSubtitleSize: () => void;
@@ -36,6 +40,7 @@ interface VideoDisplayAreaProps {
   onDedicatedSubtitleDrop: (e: React.DragEvent) => void;
   onDedicatedSubtitleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOffsetChange: (newOffset: number) => void;
+  onSecondaryOffsetChange: (newOffset: number) => void;
   onCaptureAudio?: (startTime: number, endTime: number) => void;
 }
 
@@ -45,12 +50,15 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   isPlaying,
   subtitleTracks,
   activeSubtitle,
+  secondarySubtitle,
   currentCues,
+  currentSecondaryCues,
   subtitlePosition,
   subtitleSize,
   isDraggingSubtitle,
   isSubtitleDragOver,
   subtitleOffset,
+  secondarySubtitleOffset,
   isCapturingAudio,
   currentTime = 0,
   videoRef,
@@ -60,6 +68,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onPlayPauseChange,
   onTimeUpdate,
   onToggleActiveSubtitle,
+  onToggleSecondarySubtitle,
   onRemoveSubtitleTrack,
   onResetSubtitlePosition,
   onResetSubtitleSize,
@@ -70,6 +79,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onDedicatedSubtitleDrop,
   onDedicatedSubtitleFileSelect,
   onOffsetChange,
+  onSecondaryOffsetChange,
   onCaptureAudio,
 }) => {
   if (!videoUrl) return null; // Should not happen if App.tsx logic is correct
@@ -120,14 +130,18 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
       <SubtitleControls 
         subtitleTracks={subtitleTracks}
         activeSubtitle={activeSubtitle}
+        secondarySubtitle={secondarySubtitle}
         subtitlePosition={subtitlePosition}
         subtitleSize={subtitleSize}
         subtitleOffset={subtitleOffset}
-        onToggleSubtitle={onToggleActiveSubtitle} 
+        secondarySubtitleOffset={secondarySubtitleOffset}
+        onToggleSubtitle={onToggleActiveSubtitle}
+        onToggleSecondarySubtitle={onToggleSecondarySubtitle}
         onRemoveSubtitle={onRemoveSubtitleTrack} 
         onResetPosition={onResetSubtitlePosition} 
         onResetSize={onResetSubtitleSize} 
         onOffsetChange={onOffsetChange}
+        onSecondaryOffsetChange={onSecondaryOffsetChange}
       />
       
       <div className="video-player-container">
@@ -152,10 +166,12 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
           
           <PooledSubtitleOverlay
             currentTime={currentTime}
-            activeTrackId={activeSubtitle}
+            primaryTrackId={activeSubtitle}
+            secondaryTrackId={secondarySubtitle}
             subtitlePosition={subtitlePosition} 
             subtitleSize={subtitleSize}
-            subtitleOffset={subtitleOffset}
+            primarySubtitleOffset={subtitleOffset}
+            secondarySubtitleOffset={secondarySubtitleOffset}
             isDraggingSubtitle={isDraggingSubtitle}
             isCapturingAudio={isCapturingAudio}
             subtitleRef={subtitleRef}

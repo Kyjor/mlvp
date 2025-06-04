@@ -1457,3 +1457,142 @@ button {
     font-size: 12px;
   }
 }
+
+/* Dual Subtitle Styles */
+.pooled-subtitle.primary-subtitle {
+  margin-bottom: 8px;
+}
+
+.pooled-subtitle.primary-subtitle .subtitle-segment {
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.pooled-subtitle.secondary-subtitle {
+  margin-top: 8px;
+}
+
+.pooled-subtitle.secondary-subtitle .subtitle-segment {
+  background: rgba(0, 50, 100, 0.8);
+  color: #e6f3ff;
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-style: italic;
+}
+
+/* Dark mode adjustments for dual subtitles */
+@media (prefers-color-scheme: dark) {
+  .pooled-subtitle.primary-subtitle .subtitle-segment {
+    background: rgba(0, 0, 0, 0.85);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  .pooled-subtitle.secondary-subtitle .subtitle-segment {
+    background: rgba(20, 40, 80, 0.85);
+    color: #b3d9ff;
+    border-color: rgba(100, 150, 255, 0.4);
+  }
+}
+
+/* Dual Subtitle Controls */
+.dual-subtitle-selectors {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.subtitle-selector.primary-selector label {
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.subtitle-selector.secondary-selector label {
+  color: #b3d9ff;
+  font-weight: bold;
+}
+
+.dual-timing-controls {
+  display: flex;
+  gap: 20px;
+  margin: 15px 0;
+  flex-wrap: wrap;
+}
+
+.timing-control-section {
+  flex: 1;
+  min-width: 300px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.timing-control-section.primary-timing {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timing-control-section.secondary-timing {
+  background: rgba(100, 150, 255, 0.1);
+  border: 1px solid rgba(100, 150, 255, 0.2);
+}
+
+.timing-control-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.timing-control-section.primary-timing h4 {
+  color: #ffffff;
+}
+
+.timing-control-section.secondary-timing h4 {
+  color: #b3d9ff;
+}
+
+/* Subtitle List Track Labels */
+.subtitle-item.active.primary {
+  border-left: 4px solid #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.subtitle-item.active.secondary {
+  border-left: 4px solid #6699ff;
+  background: rgba(100, 150, 255, 0.1);
+}
+
+.track-label {
+  font-size: 11px;
+  font-weight: bold;
+  opacity: 0.8;
+}
+
+.subtitle-item.active.primary .track-label {
+  color: #ffffff;
+}
+
+.subtitle-item.active.secondary .track-label {
+  color: #b3d9ff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dual-subtitle-selectors {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .dual-timing-controls {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .timing-control-section {
+    min-width: unset;
+  }
+}

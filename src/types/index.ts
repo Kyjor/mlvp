@@ -37,6 +37,7 @@ export interface CachedSubtitleSettings {
   position: SubtitlePosition;
   size: number;
   offset: number;
+  secondaryOffset?: number;
 }
 
 export interface CachedPlayerData {
@@ -44,6 +45,7 @@ export interface CachedPlayerData {
   lastCurrentTime: number;
   subtitleTracks: CachedSubtitleTrack[];
   activeSubtitleId: string | null;
+  secondarySubtitleId?: string | null;
   subtitleSettings: CachedSubtitleSettings;
   // We can add more here, like volume, playback rate, etc. in the future
 } 

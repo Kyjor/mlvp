@@ -4,10 +4,12 @@ import { useSubtitlePool } from '../contexts/SubtitlePoolContext';
 
 interface PooledSubtitleOverlayProps {
   currentTime: number;
-  activeTrackId: string | null;
+  primaryTrackId: string | null;
+  secondaryTrackId: string | null;
   subtitlePosition: SubtitlePosition;
   subtitleSize: number;
-  subtitleOffset: number;
+  primarySubtitleOffset: number;
+  secondarySubtitleOffset: number;
   isDraggingSubtitle: boolean;
   isCapturingAudio: boolean;
   subtitleRef: React.RefObject<HTMLDivElement>;
@@ -18,10 +20,12 @@ interface PooledSubtitleOverlayProps {
 
 export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
   currentTime,
-  activeTrackId,
+  primaryTrackId,
+  secondaryTrackId,
   subtitlePosition,
   subtitleSize,
-  subtitleOffset,
+  primarySubtitleOffset,
+  secondarySubtitleOffset,
   isDraggingSubtitle,
   isCapturingAudio,
   subtitleRef,
@@ -31,10 +35,17 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
 }) => {
   const { getPoolContainer, updateVisibleSubtitles } = useSubtitlePool();
 
-  // Update visible subtitles when time or track changes
+  // Update visible subtitles when time or tracks change
   useEffect(() => {
-    updateVisibleSubtitles(currentTime, activeTrackId, subtitleOffset, onCaptureAudio);
-  }, [currentTime, activeTrackId, subtitleOffset, onCaptureAudio, updateVisibleSubtitles]);
+    updateVisibleSubtitles(
+      currentTime, 
+      primaryTrackId, 
+      secondaryTrackId, 
+      primarySubtitleOffset, 
+      secondarySubtitleOffset, 
+      onCaptureAudio
+    );
+  }, [currentTime, primaryTrackId, secondaryTrackId, primarySubtitleOffset, secondarySubtitleOffset, onCaptureAudio, updateVisibleSubtitles]);
 
   // Handle click events on the pool container
   const handleContainerClick = async (event: React.MouseEvent) => {

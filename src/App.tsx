@@ -42,6 +42,7 @@ function App() {
   const [initialVideoPlayerState, setInitialVideoPlayerState] = useState<{fileName: string | null, currentTime: number}>({fileName: null, currentTime: 0});
   const [initialSubtitleTracks, setInitialSubtitleTracks] = useState<CachedSubtitleTrack[] | undefined>(undefined);
   const [initialActiveSubtitleId, setInitialActiveSubtitleId] = useState<string | null | undefined>(undefined);
+  const [initialSecondarySubtitleId, setInitialSecondarySubtitleId] = useState<string | null | undefined>(undefined);
   const [initialSubtitleSettings, setInitialSubtitleSettings] = useState<CachedPlayerData['subtitleSettings'] | undefined>(undefined);
 
   const videoPlayerHook = useVideoPlayer();
@@ -52,7 +53,9 @@ function App() {
   const subtitleManagerHook = useSubtitleManager(videoPlayerHook.currentTime, {
     initialTracks: initialSubtitleTracks,
     initialActiveId: initialActiveSubtitleId,
+    initialSecondaryId: initialSecondarySubtitleId,
     initialOffset: initialSubtitleSettings?.offset,
+    initialSecondaryOffset: initialSubtitleSettings?.secondaryOffset,
   });
   const audioRecordingHook = useAudioRecording({
     videoRef: videoPlayerHook.videoRef,
@@ -74,6 +77,7 @@ function App() {
       }
       setInitialSubtitleTracks(cachedData.subtitleTracks);
       setInitialActiveSubtitleId(cachedData.activeSubtitleId);
+      setInitialSecondarySubtitleId(cachedData.secondarySubtitleId);
       setInitialSubtitleSettings(cachedData.subtitleSettings); 
       
       subtitleCustomizationHook.setSubtitlePosition(cachedData.subtitleSettings.position);
@@ -99,6 +103,8 @@ function App() {
       subtitleManagerHook.setSubtitleData(initialMap);
       subtitleManagerHook.setActiveSubtitle(cachedData.activeSubtitleId);
       subtitleManagerHook.setSubtitleOffset(cachedData.subtitleSettings.offset);
+      subtitleManagerHook.setSecondarySubtitle(cachedData.secondarySubtitleId ?? null);
+      subtitleManagerHook.setSecondarySubtitleOffset(cachedData.subtitleSettings.secondaryOffset ?? 0);
 
     } else {
       setIsLoading(false);
@@ -133,10 +139,12 @@ function App() {
         src: st.src
       })),
       activeSubtitleId: subtitleManagerHook.activeSubtitle,
+      secondarySubtitleId: subtitleManagerHook.secondarySubtitle,
       subtitleSettings: {
         position: subtitleCustomizationHook.subtitlePosition,
         size: subtitleCustomizationHook.subtitleSize,
         offset: subtitleManagerHook.subtitleOffset,
+        secondaryOffset: subtitleManagerHook.secondarySubtitleOffset ?? 0,
       },
     };
     savePlayerData(playerData);
@@ -148,6 +156,8 @@ function App() {
     subtitleManagerHook.subtitleTracks, 
     subtitleManagerHook.activeSubtitle, 
     subtitleManagerHook.subtitleOffset,
+    subtitleManagerHook.secondarySubtitle,
+    subtitleManagerHook.secondarySubtitleOffset,
     subtitleCustomizationHook.subtitlePosition, 
     subtitleCustomizationHook.subtitleSize,
     debouncedSaveCurrentTime
@@ -312,12 +322,15 @@ function App() {
             isPlaying={videoPlayerHook.isPlaying}
             subtitleTracks={subtitleManagerHook.subtitleTracks}
             activeSubtitle={subtitleManagerHook.activeSubtitle}
+            secondarySubtitle={subtitleManagerHook.secondarySubtitle}
             currentCues={subtitleManagerHook.currentCues}
+            currentSecondaryCues={subtitleManagerHook.currentSecondaryCues}
             subtitlePosition={subtitleCustomizationHook.subtitlePosition}
             subtitleSize={subtitleCustomizationHook.subtitleSize}
             isDraggingSubtitle={subtitleCustomizationHook.isDraggingSubtitle}
             isSubtitleDragOver={isSubtitleDragOver}
             subtitleOffset={subtitleManagerHook.subtitleOffset}
+            secondarySubtitleOffset={subtitleManagerHook.secondarySubtitleOffset}
             isCapturingAudio={audioRecordingHook.isCapturingTimeRange}
             currentTime={videoPlayerHook.currentTime}
             videoRef={videoPlayerHook.videoRef}
@@ -327,6 +340,7 @@ function App() {
             onPlayPauseChange={videoPlayerHook.setIsPlaying} 
             onTimeUpdate={videoPlayerHook.handleTimeUpdate}
             onToggleActiveSubtitle={subtitleManagerHook.toggleActiveSubtitle}
+            onToggleSecondarySubtitle={subtitleManagerHook.toggleSecondarySubtitle}
             onRemoveSubtitleTrack={subtitleManagerHook.removeSubtitleTrack}
             onResetSubtitlePosition={subtitleCustomizationHook.resetPosition}
             onResetSubtitleSize={subtitleCustomizationHook.resetSize}
@@ -337,6 +351,7 @@ function App() {
             onDedicatedSubtitleDrop={handleDedicatedSubtitleDrop}
             onDedicatedSubtitleFileSelect={handleDedicatedSubtitleFileSelect}
             onOffsetChange={subtitleManagerHook.updateSubtitleOffset}
+            onSecondaryOffsetChange={subtitleManagerHook.updateSecondarySubtitleOffset}
             onCaptureAudio={audioRecordingHook.captureTimeRange}
           />
           

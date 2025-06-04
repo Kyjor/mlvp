@@ -8,6 +8,8 @@ interface UseSubtitleManagerProps {
   initialTracks?: CachedSubtitleTrack[];
   initialActiveId?: string | null;
   initialOffset?: number;
+  initialSecondaryId?: string | null;
+  initialSecondaryOffset?: number;
 }
 
 export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManagerProps) => {
@@ -24,7 +26,9 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
   });
 
   const [activeSubtitle, setActiveSubtitle] = useState<string | null>(props?.initialActiveId || null);
+  const [secondarySubtitle, setSecondarySubtitle] = useState<string | null>(props?.initialSecondaryId || null);
   const [subtitleOffset, setSubtitleOffset] = useState<number>(props?.initialOffset || 0);
+  const [secondarySubtitleOffset, setSecondarySubtitleOffset] = useState<number>(props?.initialSecondaryOffset || 0);
   
   const [subtitleData, setSubtitleData] = useState<Map<string, SubtitleCue[]>>(() => {
     const initialMap = new Map<string, SubtitleCue[]>();
@@ -46,6 +50,7 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
     return initialMap;
   });
   const [currentCues, setCurrentCues] = useState<SubtitleCue[]>([]);
+  const [currentSecondaryCues, setCurrentSecondaryCues] = useState<SubtitleCue[]>([]);
 
   const { createSubtitleElements, clearTrackSubtitles, clearAllSubtitles } = useSubtitlePool();
 
@@ -67,6 +72,7 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
   }, [props?.initialTracks, createSubtitleElements]);
 
   useEffect(() => {
+    // Update primary subtitle cues
     if (activeSubtitle && subtitleData.has(activeSubtitle)) {
       const cues = subtitleData.get(activeSubtitle)!;
       const newActiveCues = getActiveCues(cues, currentTime - subtitleOffset);
@@ -74,8 +80,16 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
     } else {
       setCurrentCues([]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSubtitle, subtitleData, subtitleOffset]);
+
+    // Update secondary subtitle cues
+    if (secondarySubtitle && subtitleData.has(secondarySubtitle)) {
+      const cues = subtitleData.get(secondarySubtitle)!;
+      const newSecondaryCues = getActiveCues(cues, currentTime - secondarySubtitleOffset);
+      setCurrentSecondaryCues(newSecondaryCues);
+    } else {
+      setCurrentSecondaryCues([]);
+    }
+  }, [activeSubtitle, secondarySubtitle, subtitleData, subtitleOffset, secondarySubtitleOffset]);
 
   const processSingleSubtitleFile = useCallback(async (file: File): Promise<SubtitleTrack & { vttContent: string }> => {
     console.log('Processing subtitle file:', file.name);
@@ -187,18 +201,28 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
     if (activeSubtitle === trackId) {
       setActiveSubtitle(null);
     }
-  }, [activeSubtitle, clearTrackSubtitles]);
+    if (secondarySubtitle === trackId) {
+      setSecondarySubtitle(null);
+    }
+  }, [activeSubtitle, secondarySubtitle, clearTrackSubtitles]);
 
   const toggleActiveSubtitle = useCallback((trackId: string | null) => {
     setActiveSubtitle(trackId);
+  }, []);
+
+  const toggleSecondarySubtitle = useCallback((trackId: string | null) => {
+    setSecondarySubtitle(trackId);
   }, []);
 
   const resetSubtitleState = useCallback(() => {
     setSubtitleTracks([]);
     setSubtitleData(new Map());
     setActiveSubtitle(null);
+    setSecondarySubtitle(null);
     setSubtitleOffset(0);
+    setSecondarySubtitleOffset(0);
     setCurrentCues([]);
+    setCurrentSecondaryCues([]);
     
     // Clear all pool elements
     clearAllSubtitles();
@@ -207,32 +231,34 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
   const updateSubtitleOffset = useCallback((newOffset: number) => {
     setSubtitleOffset(newOffset);
   }, []);
-  
-  useEffect(() => {
-    if (activeSubtitle && subtitleData.has(activeSubtitle)) {
-      const cues = subtitleData.get(activeSubtitle)!;
-      const newActiveCues = getActiveCues(cues, currentTime - subtitleOffset);
-      setCurrentCues(newActiveCues);
-    } else {
-      setCurrentCues([]);
-    }
-  }, [currentTime, activeSubtitle, subtitleData, subtitleOffset]);
+
+  const updateSecondarySubtitleOffset = useCallback((newOffset: number) => {
+    setSecondarySubtitleOffset(newOffset);
+  }, []);
 
   return {
     subtitleTracks,
     activeSubtitle,
+    secondarySubtitle,
     currentCues,
+    currentSecondaryCues,
     subtitleOffset,
+    secondarySubtitleOffset,
     subtitleData,
     addSubtitleFiles,
     removeSubtitleTrack,
     toggleActiveSubtitle,
+    toggleSecondarySubtitle,
     updateSubtitleOffset,
+    updateSecondarySubtitleOffset,
     resetSubtitleState,
     setSubtitleTracks,
     setActiveSubtitle,
+    setSecondarySubtitle,
     setSubtitleData,
     setCurrentCues,
-    setSubtitleOffset
+    setCurrentSecondaryCues,
+    setSubtitleOffset,
+    setSecondarySubtitleOffset
   };
 }; 
