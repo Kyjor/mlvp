@@ -6,11 +6,13 @@ interface AudioRecordingControlsProps {
   error: string | null;
   bufferDuration: number;
   isCapturingTimeRange: boolean;
+  dictionaryBufferSeconds: number;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onDownloadAudio: () => void;
   onCopyAudioDataUrl: () => void;
   onSetBufferDuration: (duration: number) => void;
+  onSetDictionaryBufferSeconds: (bufferSeconds: number) => void;
   onClearError: () => void;
 }
 
@@ -20,11 +22,13 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
   error,
   bufferDuration,
   isCapturingTimeRange,
+  dictionaryBufferSeconds,
   onStartRecording,
   onStopRecording,
   onDownloadAudio,
   onCopyAudioDataUrl,
   onSetBufferDuration,
+  onSetDictionaryBufferSeconds,
   onClearError
 }) => {
   const [showSettings, setShowSettings] = useState(false);
@@ -54,6 +58,10 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
 
   const handleDurationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onSetBufferDuration(parseInt(e.target.value));
+  };
+
+  const handleDictionaryBufferChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onSetDictionaryBufferSeconds(parseFloat(e.target.value));
   };
 
   return (
@@ -89,6 +97,25 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
           </div>
           <p className="setting-help">
             This determines how much audio history is kept in memory.
+          </p>
+          
+          <div className="setting-group">
+            <label htmlFor="dictionary-buffer">Dictionary Lookup Buffer:</label>
+            <select 
+              id="dictionary-buffer"
+              value={dictionaryBufferSeconds} 
+              onChange={handleDictionaryBufferChange}
+            >
+              <option value={0}>0 seconds (exact timing)</option>
+              <option value={0.5}>0.5 seconds</option>
+              <option value={1}>1 second</option>
+              <option value={1.5}>1.5 seconds</option>
+              <option value={2}>2 seconds</option>
+              <option value={3}>3 seconds</option>
+            </select>
+          </div>
+          <p className="setting-help">
+            Extra audio buffer before/after dictionary lookup timing (Shift+Click).
           </p>
         </div>
       )}

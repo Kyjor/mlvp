@@ -21,7 +21,8 @@ interface PooledSubtitleOverlayProps {
   onMouseDown: (e: React.MouseEvent) => void;
   onWheel: (e: React.WheelEvent) => void;
   onCaptureAudio?: (startTime: number, endTime: number) => void;
-  captureDictionaryAudio?: (startTime: number, endTime: number) => Promise<string>;
+  captureDictionaryAudio?: (startTime: number, endTime: number, buffer: number) => Promise<string>;
+  dictionaryBufferSeconds?: number;
 }
 
 export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
@@ -40,6 +41,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
   onWheel,
   onCaptureAudio,
   captureDictionaryAudio,
+  dictionaryBufferSeconds = 0,
 }) => {
   const { getPoolContainer, updateVisibleSubtitles } = useSubtitlePool();
 
@@ -114,18 +116,18 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
         // Since we don't have direct access to cue data here, we'll use a reasonable default
         // This would ideally be passed down as context or extracted from the subtitle pool
         return { 
-          startTime: Math.max(0, currentTime - 3), 
-          endTime: currentTime + 3 
+          startTime: Math.max(0, currentTime - (dictionaryBufferSeconds + 3)), 
+          endTime: currentTime + (dictionaryBufferSeconds + 3)
         };
       }
     }
     
-    // Fallback: use current time ± 2 seconds
+    // Fallback: use current time ± buffer
     return { 
-      startTime: Math.max(0, currentTime - 2), 
-      endTime: currentTime + 2 
+      startTime: Math.max(0, currentTime - (dictionaryBufferSeconds + 2)), 
+      endTime: currentTime + (dictionaryBufferSeconds + 2)
     };
-  }, [subtitleRef, currentTime]);
+  }, [subtitleRef, currentTime, dictionaryBufferSeconds]);
 
   // Lookup handler
   const handleLookup = async (text: string) => {
@@ -144,7 +146,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
       try {
         const timing = getCurrentSubtitleTiming();
         if (timing) {
-          audioDataUrl = await captureDictionaryAudio(timing.startTime, timing.endTime);
+          audioDataUrl = await captureDictionaryAudio(timing.startTime, timing.endTime, dictionaryBufferSeconds);
           setAudioData(audioDataUrl);
         }
       } catch (error) {

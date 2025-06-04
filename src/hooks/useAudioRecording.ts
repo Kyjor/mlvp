@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 interface UseAudioRecordingProps {
   videoRef: React.RefObject<HTMLVideoElement>;
   bufferDurationSeconds?: number;
+  initialDictionaryBuffer?: number;
 }
 
 interface AudioRecordingState {
@@ -11,15 +12,17 @@ interface AudioRecordingState {
   error: string | null;
   bufferDuration: number;
   isCapturingTimeRange: boolean;
+  dictionaryBufferSeconds: number;
 }
 
-export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseAudioRecordingProps) => {
+export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30, initialDictionaryBuffer = 0 }: UseAudioRecordingProps) => {
   const [state, setState] = useState<AudioRecordingState>({
     isRecording: false,
     isSupported: false,
     error: null,
     bufferDuration: bufferDurationSeconds,
-    isCapturingTimeRange: false
+    isCapturingTimeRange: false,
+    dictionaryBufferSeconds: initialDictionaryBuffer
   });
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -441,14 +444,15 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
   }, [state.isSupported, state.isCapturingTimeRange, createWavFile, videoRef]);
 
   // Capture audio for dictionary lookup (returns data URL instead of downloading)
-  const captureDictionaryAudio = useCallback(async (startTime: number, endTime: number, bufferSeconds: number = 1): Promise<string> => {
+  const captureDictionaryAudio = useCallback(async (startTime: number, endTime: number, bufferSeconds?: number): Promise<string> => {
     if (!state.isSupported || !videoRef.current) {
       throw new Error('Audio capture not supported or no video available');
     }
 
+    const effectiveBufferSeconds = bufferSeconds ?? state.dictionaryBufferSeconds;
     const video = videoRef.current;
-    const captureStart = Math.max(0, startTime - bufferSeconds);
-    const captureEnd = Math.min(video.duration || endTime + bufferSeconds, endTime + bufferSeconds);
+    const captureStart = Math.max(0, startTime - effectiveBufferSeconds);
+    const captureEnd = Math.min(video.duration || endTime + effectiveBufferSeconds, endTime + effectiveBufferSeconds);
     const captureDuration = captureEnd - captureStart;
 
     if (captureDuration <= 0) {
@@ -473,7 +477,7 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
         // If video already has a source node, we need to handle this differently
         // For now, fall back to the temp audio approach
         audioContext.close();
-        return await captureDictionaryAudioFallback(startTime, endTime, bufferSeconds);
+        return await captureDictionaryAudioFallback(startTime, endTime, effectiveBufferSeconds);
       }
       
       const processor = audioContext.createScriptProcessor(4096, 2, 2);
@@ -583,17 +587,18 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
       console.error('Error capturing dictionary audio:', error);
       throw error instanceof Error ? error : new Error('Failed to capture audio for dictionary');
     }
-  }, [state.isSupported, createWavFile, videoRef]);
+  }, [state.isSupported, state.dictionaryBufferSeconds, createWavFile, videoRef]);
 
   // Fallback method using temporary audio element (original approach)
-  const captureDictionaryAudioFallback = useCallback(async (startTime: number, endTime: number, bufferSeconds: number = 1): Promise<string> => {
+  const captureDictionaryAudioFallback = useCallback(async (startTime: number, endTime: number, bufferSeconds?: number): Promise<string> => {
     if (!state.isSupported || !videoRef.current) {
       throw new Error('Audio capture not supported or no video available');
     }
 
+    const effectiveBufferSeconds = bufferSeconds ?? state.dictionaryBufferSeconds;
     const video = videoRef.current;
-    const captureStart = Math.max(0, startTime - bufferSeconds);
-    const captureEnd = Math.min(video.duration || endTime + bufferSeconds, endTime + bufferSeconds);
+    const captureStart = Math.max(0, startTime - effectiveBufferSeconds);
+    const captureEnd = Math.min(video.duration || endTime + effectiveBufferSeconds, endTime + effectiveBufferSeconds);
     const captureDuration = captureEnd - captureStart;
 
     if (captureDuration <= 0) {
@@ -683,7 +688,7 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
       console.error('Error capturing dictionary audio with fallback:', error);
       throw error instanceof Error ? error : new Error('Failed to capture audio for dictionary');
     }
-  }, [state.isSupported, createWavFile, videoRef]);
+  }, [state.isSupported, state.dictionaryBufferSeconds, createWavFile, videoRef]);
 
   // Update buffer duration
   const setBufferDuration = useCallback((duration: number) => {
@@ -694,6 +699,11 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
       initializeBuffer(audioContextRef.current.sampleRate, duration);
     }
   }, [state.isRecording, initializeBuffer]);
+
+  // Update dictionary buffer duration
+  const setDictionaryBufferSeconds = useCallback((bufferSeconds: number) => {
+    setState(prev => ({ ...prev, dictionaryBufferSeconds: bufferSeconds }));
+  }, []);
 
   // Clear error state
   const clearError = useCallback(() => {
@@ -724,6 +734,7 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
     setBufferDuration,
     captureTimeRange,
     captureDictionaryAudio,
+    setDictionaryBufferSeconds,
     clearError
   };
 }; 

@@ -45,6 +45,7 @@ function App() {
   const [initialActiveSubtitleId, setInitialActiveSubtitleId] = useState<string | null | undefined>(undefined);
   const [initialSecondarySubtitleId, setInitialSecondarySubtitleId] = useState<string | null | undefined>(undefined);
   const [initialSubtitleSettings, setInitialSubtitleSettings] = useState<CachedPlayerData['subtitleSettings'] | undefined>(undefined);
+  const [initialAudioSettings, setInitialAudioSettings] = useState<CachedPlayerData['audioSettings'] | undefined>(undefined);
 
   const videoPlayerHook = useVideoPlayer();
   const subtitleCustomizationHook = useSubtitleCustomization({
@@ -60,7 +61,8 @@ function App() {
   });
   const audioRecordingHook = useAudioRecording({
     videoRef: videoPlayerHook.videoRef,
-    bufferDurationSeconds: 30
+    bufferDurationSeconds: 30,
+    initialDictionaryBuffer: initialAudioSettings?.dictionaryBufferSeconds || 0
   });
 
   useEffect(() => {
@@ -80,6 +82,7 @@ function App() {
       setInitialActiveSubtitleId(cachedData.activeSubtitleId);
       setInitialSecondarySubtitleId(cachedData.secondarySubtitleId);
       setInitialSubtitleSettings(cachedData.subtitleSettings); 
+      setInitialAudioSettings(cachedData.audioSettings);
       
       subtitleCustomizationHook.setSubtitlePosition(cachedData.subtitleSettings.position);
       subtitleCustomizationHook.setSubtitleSize(cachedData.subtitleSettings.size);
@@ -147,6 +150,9 @@ function App() {
         offset: subtitleManagerHook.subtitleOffset,
         secondaryOffset: subtitleManagerHook.secondarySubtitleOffset ?? 0,
       },
+      audioSettings: {
+        dictionaryBufferSeconds: audioRecordingHook.dictionaryBufferSeconds
+      },
     };
     savePlayerData(playerData);
 
@@ -161,6 +167,7 @@ function App() {
     subtitleManagerHook.secondarySubtitleOffset,
     subtitleCustomizationHook.subtitlePosition, 
     subtitleCustomizationHook.subtitleSize,
+    audioRecordingHook.dictionaryBufferSeconds,
     debouncedSaveCurrentTime
   ]);
 
@@ -357,6 +364,7 @@ function App() {
             onCaptureAudio={audioRecordingHook.captureTimeRange}
             onToggleBlurSecondary={setBlurSecondarySubtitle}
             captureDictionaryAudio={audioRecordingHook.captureDictionaryAudio}
+            dictionaryBufferSeconds={audioRecordingHook.dictionaryBufferSeconds}
           />
           
           <div className="video-controls">
@@ -389,11 +397,13 @@ function App() {
               error={audioRecordingHook.error}
               bufferDuration={audioRecordingHook.bufferDuration}
               isCapturingTimeRange={audioRecordingHook.isCapturingTimeRange}
+              dictionaryBufferSeconds={audioRecordingHook.dictionaryBufferSeconds}
               onStartRecording={audioRecordingHook.startRecording}
               onStopRecording={audioRecordingHook.stopRecording}
               onDownloadAudio={audioRecordingHook.downloadBufferedAudio}
               onCopyAudioDataUrl={audioRecordingHook.copyAudioDataUrl}
               onSetBufferDuration={audioRecordingHook.setBufferDuration}
+              onSetDictionaryBufferSeconds={audioRecordingHook.setDictionaryBufferSeconds}
               onClearError={audioRecordingHook.clearError}
             />
           )}

@@ -40,6 +40,10 @@ export interface CachedSubtitleSettings {
   secondaryOffset?: number;
 }
 
+export interface CachedAudioSettings {
+  dictionaryBufferSeconds: number;
+}
+
 export interface CachedPlayerData {
   videoFileIdentifier: string | null; // Could be fileName for local files
   lastCurrentTime: number;
@@ -47,5 +51,6 @@ export interface CachedPlayerData {
   activeSubtitleId: string | null;
   secondarySubtitleId?: string | null;
   subtitleSettings: CachedSubtitleSettings;
+  audioSettings?: CachedAudioSettings;
   // We can add more here, like volume, playback rate, etc. in the future
 } 
