@@ -11,6 +11,7 @@ interface AudioRecordingControlsProps {
   onStopRecording: () => void;
   onDownloadAudio: () => void;
   onCopyAudioDataUrl: () => void;
+  onCopyAudioAsHtml?: () => void;
   onSetBufferDuration: (duration: number) => void;
   onSetDictionaryBufferSeconds: (bufferSeconds: number) => void;
   onClearError: () => void;
@@ -27,6 +28,7 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
   onStopRecording,
   onDownloadAudio,
   onCopyAudioDataUrl,
+  onCopyAudioAsHtml,
   onSetBufferDuration,
   onSetDictionaryBufferSeconds,
   onClearError
@@ -169,6 +171,15 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
               >
                 Copy Audio Data URL
               </button>
+              {onCopyAudioAsHtml && (
+                <button 
+                  onClick={onCopyAudioAsHtml}
+                  className="copy-audio-html-btn"
+                  title="Copy as HTML audio component"
+                >
+                  Copy as HTML Component
+                </button>
+              )}
             </>
           ) : null}
         </div>
@@ -192,8 +203,10 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
         <p>2. Play your video - audio will be continuously captured</p>
         <p>3. Click "Download Audio" to save the audio buffer</p>
         <p>4. Click "Copy Audio Data URL" to copy the audio data URL</p>
-        <p>5. Paste the audio file in any application that supports WAV files</p>
+        <p>5. Click "Copy as HTML Component" to copy a clickable audio widget</p>
+        <p>6. Paste the audio file in any application that supports WAV files</p>
         <p>🎤 <strong>Subtitle Capture:</strong> Click the microphone button (🎤) on any subtitle line to capture that dialogue with ±2 second buffer!</p>
+        <p>🎵 <strong>Dictionary Lookup:</strong> Shift+Click any Japanese text to get audio + screenshot + definitions in one modal!</p>
       </div>
     </div>
   );

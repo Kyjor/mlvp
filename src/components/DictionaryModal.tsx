@@ -77,6 +77,28 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
     }
   };
 
+  // Helper function to copy audio as HTML component
+  const copyAudioAsHtml = async (dataUrl: string) => {
+    try {
+      // Convert data URL to blob URL
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Generate timestamp-based ID
+      const timestamp = Date.now();
+      const audioId = `audio-cont-${timestamp}`;
+      const filename = `${timestamp}.wav`;
+      
+      // Create the HTML string with the specified format
+      const htmlString = `<img class="audio-container audio-play" data-url="${blobUrl}" title="${filename}" id="${audioId}" data-suffix="wav" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' style='width:24px;height:24px' viewBox='0 0 24 24'%3E%3C/svg%3E">`;
+      
+      await navigator.clipboard.writeText(htmlString);
+    } catch (err) {
+      console.error('Failed to copy audio HTML to clipboard:', err);
+    }
+  };
+
   // Helper to highlight the word in the source text with bold
   const highlightWordInText = (text: string, wordToHighlight: string): JSX.Element => {
     if (!text || !wordToHighlight) {
@@ -166,6 +188,13 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
                 title="Copy audio data URL"
               >
                 📋
+              </button>
+              <button 
+                style={{...copyButtonStyle, marginLeft: '4px'}}
+                onClick={() => copyAudioAsHtml(audioData)}
+                title="Copy as HTML audio component"
+              >
+                🎵
               </button>
             </div>
             <audio 

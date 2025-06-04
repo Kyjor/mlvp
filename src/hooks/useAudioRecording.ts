@@ -331,6 +331,64 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30, initia
     }
   }, [state.isRecording, createWavFile]);
 
+  // Copy audio as HTML component to clipboard
+  const copyAudioAsHtml = useCallback(async () => {
+    if (!state.isRecording || audioBufferRef.current.length === 0) {
+      setState(prev => ({ ...prev, error: 'No audio data available' }));
+      return;
+    }
+
+    try {
+      // Combine all buffer chunks in the correct order
+      const totalSamples = audioBufferRef.current.reduce((sum, chunk) => sum + chunk.length, 0);
+      const combinedBuffer = new Float32Array(totalSamples);
+      
+      let offset = 0;
+      const startIndex = bufferIndexRef.current % audioBufferRef.current.length;
+      
+      // Copy from start index to end of array
+      for (let i = startIndex; i < audioBufferRef.current.length; i++) {
+        const chunk = audioBufferRef.current[i];
+        if (chunk) {
+          combinedBuffer.set(chunk, offset);
+          offset += chunk.length;
+        }
+      }
+      
+      // Copy from beginning to start index
+      for (let i = 0; i < startIndex; i++) {
+        const chunk = audioBufferRef.current[i];
+        if (chunk) {
+          combinedBuffer.set(chunk, offset);
+          offset += chunk.length;
+        }
+      }
+
+      // Create WAV file and convert to blob URL
+      const wavBlob = createWavFile(combinedBuffer, sampleRateRef.current);
+      const blobUrl = URL.createObjectURL(wavBlob);
+      
+      // Generate timestamp-based ID and filename
+      const timestamp = Date.now();
+      const audioId = `audio-cont-${timestamp}`;
+      const filename = `${timestamp}.wav`;
+      
+      // Create the HTML string
+      const htmlString = `<img class="audio-container audio-play" data-url="${blobUrl}" title="${filename}" id="${audioId}" data-suffix="wav" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' style='width:24px;height:24px' viewBox='0 0 24 24'%3E%3C/svg%3E">`;
+      
+      await navigator.clipboard.writeText(htmlString);
+      console.log('Audio HTML component copied to clipboard successfully');
+      setState(prev => ({ ...prev, error: null }));
+      
+    } catch (error) {
+      console.error('Error creating audio HTML component:', error);
+      setState(prev => ({ 
+        ...prev, 
+        error: error instanceof Error ? error.message : 'Failed to create audio HTML component' 
+      }));
+    }
+  }, [state.isRecording, createWavFile]);
+
   // Capture audio for a specific time range (e.g., subtitle line + buffer)
   const captureTimeRange = useCallback(async (startTime: number, endTime: number, bufferSeconds: number = 2) => {
     if (!state.isSupported || !videoRef.current || state.isCapturingTimeRange) {
@@ -731,6 +789,7 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30, initia
     stopRecording,
     downloadBufferedAudio,
     copyAudioDataUrl,
+    copyAudioAsHtml,
     setBufferDuration,
     captureTimeRange,
     captureDictionaryAudio,

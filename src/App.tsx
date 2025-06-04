@@ -402,6 +402,7 @@ function App() {
               onStopRecording={audioRecordingHook.stopRecording}
               onDownloadAudio={audioRecordingHook.downloadBufferedAudio}
               onCopyAudioDataUrl={audioRecordingHook.copyAudioDataUrl}
+              onCopyAudioAsHtml={audioRecordingHook.copyAudioAsHtml}
               onSetBufferDuration={audioRecordingHook.setBufferDuration}
               onSetDictionaryBufferSeconds={audioRecordingHook.setDictionaryBufferSeconds}
               onClearError={audioRecordingHook.clearError}
