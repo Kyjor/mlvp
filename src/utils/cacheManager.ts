@@ -6,7 +6,7 @@ export const savePlayerData = (data: CachedPlayerData): void => {
   try {
     const serializedData = JSON.stringify(data);
     localStorage.setItem(CACHE_KEY, serializedData);
-    console.log('Player data saved to cache', data);
+    // console.log('Player data saved to cache', data);
   } catch (error) {
     console.error('Error saving player data to localStorage:', error);
   }

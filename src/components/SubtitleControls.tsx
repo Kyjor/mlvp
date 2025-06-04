@@ -104,10 +104,10 @@ export const SubtitleControls: React.FC<SubtitleControlsProps> = ({
               </div>
             </div>
             <div className="control-instructions">
-              <p>💡 <strong>Drag Up/Right</strong> to make subtitles bigger</p>
-              <p>💡 <strong>Drag Down/Left</strong> to make subtitles smaller</p>
+              <p>💡 <strong>Ctrl + Double Click</strong> to copy subtitle text</p>
               <p>💡 <strong>Ctrl + Drag</strong> to move subtitles</p>
-              <p>💡 <strong>Ctrl + Scroll</strong> to resize precisely</p>
+              <p>💡 <strong>Alt + Drag Up/Right</strong> to make subtitles bigger</p>
+              <p>💡 <strong>Alt + Drag Down/Left</strong> to make subtitles smaller</p>
             </div>
           </div>
 

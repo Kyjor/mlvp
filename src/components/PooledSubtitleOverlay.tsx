@@ -49,35 +49,34 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
 
   // Handle click events on the pool container
   const handleContainerClick = async (event: React.MouseEvent) => {
-    if (event.shiftKey) {
+    if (event.ctrlKey && event.detail === 2) { // Ctrl+Double Click
       event.preventDefault();
       event.stopPropagation();
 
-      // Get all visible subtitle text
-      const container = getPoolContainer();
-      const visibleSubtitles = Array.from(container.querySelectorAll('.pooled-subtitle[style*="flex"]'));
+      // Find the specific subtitle element that was clicked
+      const target = event.target as HTMLElement;
+      const clickedSubtitle = target.closest('.pooled-subtitle') as HTMLElement;
       
-      const subtitleText = visibleSubtitles.map(element => {
-        const segment = element.querySelector('.subtitle-segment');
+      if (clickedSubtitle && clickedSubtitle.style.display === 'flex') {
+        const segment = clickedSubtitle.querySelector('.subtitle-segment');
         if (segment) {
           // Create a temporary element to parse HTML and extract text content
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = segment.innerHTML;
-          return tempDiv.textContent || tempDiv.innerText || "";
-        }
-        return "";
-      }).join('\n');
-
-      if (subtitleText) {
-        try {
-          await navigator.clipboard.writeText(subtitleText);
-          console.log('Subtitle copied to clipboard:', subtitleText);
-        } catch (err) {
-          console.error('Failed to copy subtitle to clipboard:', err);
+          const subtitleText = tempDiv.textContent || tempDiv.innerText || "";
+          
+          if (subtitleText) {
+            try {
+              await navigator.clipboard.writeText(subtitleText);
+              console.log('Subtitle copied to clipboard:', subtitleText);
+            } catch (err) {
+              console.error('Failed to copy subtitle to clipboard:', err);
+            }
+          }
         }
       }
-    } else {
-      // If not a shift-click, then it's a drag attempt
+    } else if (!event.ctrlKey && !event.altKey) {
+      // Only trigger drag if no modifier keys are pressed
       onMouseDown(event);
     }
   };
@@ -120,7 +119,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
       role="region"
       aria-live="polite"
       aria-label="Subtitles display area"
-      title="Shift+Click to copy. Ctrl+Drag to move. Ctrl+Scroll or Drag Up/Right to resize."
+      title="Ctrl+Double Click to copy. Ctrl+Drag to move. Alt+Drag Up/Right to resize."
     >
       {isDraggingSubtitle && (
         <div className="subtitle-drag-hint">

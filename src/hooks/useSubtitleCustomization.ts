@@ -70,7 +70,7 @@ export const useSubtitleCustomization = (props?: UseSubtitleCustomizationProps) 
         y: Math.max(0, Math.min(100, newSubtitleBottomPercent)),
       });
 
-    } else { // Resizing
+    } else if (event.altKey) { // Resizing with Alt+Drag
       // Calculate change relative to the center of the subtitle for intuitive scaling
       const currentRect = subtitleRef.current.getBoundingClientRect();
       const centerX = currentRect.left + currentRect.width / 2;
@@ -112,11 +112,8 @@ export const useSubtitleCustomization = (props?: UseSubtitleCustomizationProps) 
   }, [dragState]);
 
   const handleSubtitleWheel = useCallback((event: React.WheelEvent) => {
-    if (event.ctrlKey) {
-      event.preventDefault();
-      const scaleAmount = event.deltaY * -0.1; // Adjust multiplier for sensitivity
-      setSubtitleSize(prevSize => Math.max(10, Math.min(500, prevSize + scaleAmount)));
-    }
+    // Scroll functionality removed - now only Alt+Drag is used for resizing
+    event.preventDefault(); // Prevent default scrolling on subtitle area
   }, []);
 
   useEffect(() => {

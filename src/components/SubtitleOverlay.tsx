@@ -26,28 +26,51 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
 }) => {
 
   const handleSubtitleClick = async (event: React.MouseEvent) => {
-    if (event.shiftKey) {
-      event.preventDefault(); // Prevent any default shift+click behavior
+    if (event.ctrlKey && event.detail === 2) { // Ctrl+Double Click
+      event.preventDefault(); // Prevent any default ctrl+double click behavior
       event.stopPropagation(); // Stop event from bubbling to onMouseDown if it's on the same element
 
-      const subtitleTextToCopy = currentCues.map(cue => {
-        // Create a temporary element to parse HTML and extract text content
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = cue.text; 
-        return tempDiv.textContent || tempDiv.innerText || "";
-      }).join('\n');
+      // Find the specific subtitle line that was clicked
+      const target = event.target as HTMLElement;
+      const clickedLine = target.closest('.subtitle-line-container') as HTMLElement;
+      
+      if (clickedLine) {
+        const segment = clickedLine.querySelector('.subtitle-segment');
+        if (segment) {
+          // Create a temporary element to parse HTML and extract text content
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = segment.innerHTML;
+          const subtitleText = tempDiv.textContent || tempDiv.innerText || "";
+          
+          if (subtitleText) {
+            try {
+              await navigator.clipboard.writeText(subtitleText);
+              console.log('Subtitle copied to clipboard:', subtitleText);
+            } catch (err) {
+              console.error('Failed to copy subtitle to clipboard:', err);
+            }
+          }
+        }
+      } else {
+        // Fallback: if no specific line was clicked, copy all current cues
+        const subtitleTextToCopy = currentCues.map(cue => {
+          // Create a temporary element to parse HTML and extract text content
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = cue.text; 
+          return tempDiv.textContent || tempDiv.innerText || "";
+        }).join('\n');
 
-      if (subtitleTextToCopy) {
-        try {
-          await navigator.clipboard.writeText(subtitleTextToCopy);
-          console.log('Subtitle copied to clipboard:', subtitleTextToCopy);
-          // Consider adding a brief visual notification here
-        } catch (err) {
-          console.error('Failed to copy subtitle to clipboard:', err);
+        if (subtitleTextToCopy) {
+          try {
+            await navigator.clipboard.writeText(subtitleTextToCopy);
+            console.log('Subtitle copied to clipboard:', subtitleTextToCopy);
+          } catch (err) {
+            console.error('Failed to copy subtitle to clipboard:', err);
+          }
         }
       }
-    } else {
-      // If not a shift-click, then it's a drag attempt, so call the original onMouseDown
+    } else if (!event.ctrlKey && !event.altKey) {
+      // Only trigger drag if no modifier keys are pressed
       onMouseDown(event);
     }
   };
@@ -102,7 +125,7 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
       role="region" // More appropriate role for a region displaying subtitles
       aria-live="polite"
       aria-label="Subtitles display area"
-      title={currentCues.length > 0 ? "Shift+Click to copy. Ctrl+Drag to move. Ctrl+Scroll or Drag Up/Right to resize." : "Subtitle controls: Ctrl+Drag to move. Ctrl+Scroll or Drag Up/Right to resize."}
+      title={currentCues.length > 0 ? "Ctrl+Double Click to copy. Ctrl+Drag to move. Alt+Drag Up/Right to resize." : "Subtitle controls: Ctrl+Drag to move. Alt+Drag Up/Right to resize."}
     >
       {isDraggingSubtitle && (
         <div className="subtitle-drag-hint">
@@ -144,4 +167,4 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
       </div>
     </div>
   );
-}; 
+};
