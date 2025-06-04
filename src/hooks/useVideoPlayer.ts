@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 
 export const useVideoPlayer = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -8,13 +8,18 @@ export const useVideoPlayer = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // State to manage the initial time we want to seek to
+  const [pendingInitialTime, setPendingInitialTime] = useState<number | null>(null);
+  // Ref to keep track of the current object URL for proper revocation
+  const videoUrlObjectRef = useRef<string | null>(null);
+
   const togglePlayPause = useCallback(() => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
       } else {
         videoRef.current.play().catch(err => {
-          console.error("Error playing video:", err);
+          console.error("[VideoPlayer] Error playing video:", err);
           setVideoError("Failed to play video. " + err.message);
         });
       }
@@ -29,55 +34,179 @@ export const useVideoPlayer = () => {
   }, []);
 
   const processVideoFile = useCallback(async (file: File, initialTime?: number) => {
+    console.log(`[VideoPlayer] processVideoFile called. File: ${file.name}, initialTime: ${initialTime}`);
     setVideoError(null);
     try {
       // Revoke previous object URL if it exists
-      if (videoUrl) {
-        URL.revokeObjectURL(videoUrl);
+      if (videoUrlObjectRef.current) {
+        URL.revokeObjectURL(videoUrlObjectRef.current);
+        console.log("[VideoPlayer] Revoked old object URL:", videoUrlObjectRef.current);
       }
-      const url = URL.createObjectURL(file);
-      setVideoUrl(url);
-      setFileName(file.name);
-      setIsPlaying(false); 
-      setCurrentTime(initialTime || 0); // Set initial time or 0
 
-      if (videoRef.current) {
-        videoRef.current.currentTime = initialTime || 0; // Seek to initial time
-        // Autoplay is not set here, user will need to press play
-      }
-      
+      const newUrl = URL.createObjectURL(file);
+      videoUrlObjectRef.current = newUrl; // Store new URL for future revocation
+      console.log("[VideoPlayer] Created new object URL:", newUrl);
+
+      setVideoUrl(newUrl); // This will trigger the useEffect for seeking
+      setFileName(file.name);
+      setIsPlaying(false);
+      // Set currentTime state immediately for UI responsiveness
+      setCurrentTime(initialTime ?? 0); 
+      console.log(`[VideoPlayer] Set React currentTime state to: ${initialTime ?? 0}`);
+      // Signal the useEffect to act with the initialTime
+      setPendingInitialTime(initialTime ?? null); 
+      console.log(`[VideoPlayer] Set pendingInitialTime to: ${initialTime ?? null}`);
+
     } catch (error) {
-      console.error("Failed to process video:", error);
+      console.error("[VideoPlayer] Failed to process video:", error);
       setVideoError("Failed to load video file.");
     }
-  }, [videoUrl]); // Added videoUrl to dependencies to revoke old URL
+  }, []); // No dependencies, uses refs and setters
+
+  // Effect to handle seeking when videoUrl or pendingInitialTime changes
+  useLayoutEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoUrl || typeof pendingInitialTime !== 'number') {
+      console.log("[VideoPlayer] Seek useLayoutEffect: Skipping (conditions: !video:", !video, ", !videoUrl:", !videoUrl, ", typeof pendingInitialTime !== 'number':", typeof pendingInitialTime !== 'number', ", pendingInitialTime:", pendingInitialTime);
+      return;
+    }
+
+    console.log(`[VideoPlayer] Seek useLayoutEffect: Active. videoUrl: ${videoUrl}, pendingInitialTime: ${pendingInitialTime}, readyState: ${video.readyState}`);
+
+    let didUnmount = false;
+
+    const performActualSeek = () => {
+      if (didUnmount || !video || typeof pendingInitialTime !== 'number') return;
+      console.log(`[VideoPlayer] Loaded metadata or already ready. Attempting to set video.currentTime to ${pendingInitialTime}. Current: ${video.currentTime}`);
+      video.currentTime = pendingInitialTime;
+    };
+
+    const afterActualSeek = () => {
+      if (didUnmount || !video) return;
+      console.log(`[VideoPlayer] Seeked event fired. Actual video.currentTime: ${video.currentTime}. Updating React state.`);
+      setCurrentTime(video.currentTime); // Sync React state with actual video time
+      setPendingInitialTime(null);     // Clear the pending request
+    };
+    
+    // Ensure the video element's src attribute is up-to-date.
+    // React should handle this, but this effect runs after the DOM update.
+    if (video.getAttribute('src') !== videoUrl) {
+        console.warn(`[VideoPlayer] video.getAttribute('src') (${video.getAttribute('src')}) !== videoUrl (${videoUrl}). This might indicate a delay in DOM update. Relying on loadedmetadata for new source.`);
+        // If src is not yet updated on the element, we MUST wait for loadedmetadata.
+         video.addEventListener('loadedmetadata', performActualSeek, { once: true });
+    } else if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+      console.log(`[VideoPlayer] Metadata not ready (readyState: ${video.readyState}), adding loadedmetadata listener.`);
+      video.addEventListener('loadedmetadata', performActualSeek, { once: true });
+    } else {
+      // Metadata is already loaded, and src is assumed to be correct.
+      console.log(`[VideoPlayer] Metadata ready (readyState: ${video.readyState}), seeking directly.`);
+      performActualSeek();
+    }
+
+    // Always listen for 'seeked' to finalize the process and update state.
+    video.addEventListener('seeked', afterActualSeek, { once: true });
+
+    return () => {
+      didUnmount = true;
+      console.log("[VideoPlayer] Seek useLayoutEffect: Cleanup listeners.");
+      if (video) {
+        video.removeEventListener('loadedmetadata', performActualSeek);
+        video.removeEventListener('seeked', afterActualSeek);
+      }
+    };
+  }, [videoUrl, pendingInitialTime, videoRef]); // videoRef included in case the element instance changes
+
+  // Additional effect to handle case where video element becomes available after conditional rendering
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoUrl || typeof pendingInitialTime !== 'number') {
+      return;
+    }
+
+    console.log(`[VideoPlayer] Backup seek useEffect: Video element now available. videoUrl: ${videoUrl}, pendingInitialTime: ${pendingInitialTime}, readyState: ${video.readyState}`);
+
+    let didUnmount = false;
+
+    const performActualSeek = () => {
+      if (didUnmount || !video || typeof pendingInitialTime !== 'number') return;
+      console.log(`[VideoPlayer] Backup seek: Loaded metadata or already ready. Attempting to set video.currentTime to ${pendingInitialTime}. Current: ${video.currentTime}`);
+      video.currentTime = pendingInitialTime;
+    };
+
+    const afterActualSeek = () => {
+      if (didUnmount || !video) return;
+      console.log(`[VideoPlayer] Backup seek: Seeked event fired. Actual video.currentTime: ${video.currentTime}. Updating React state.`);
+      setCurrentTime(video.currentTime); // Sync React state with actual video time
+      setPendingInitialTime(null);     // Clear the pending request
+    };
+    
+    // Check if video src matches videoUrl
+    if (video.getAttribute('src') !== videoUrl) {
+        console.warn(`[VideoPlayer] Backup seek: video.getAttribute('src') (${video.getAttribute('src')}) !== videoUrl (${videoUrl}). Waiting for loadedmetadata.`);
+        video.addEventListener('loadedmetadata', performActualSeek, { once: true });
+    } else if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+      console.log(`[VideoPlayer] Backup seek: Metadata not ready (readyState: ${video.readyState}), adding loadedmetadata listener.`);
+      video.addEventListener('loadedmetadata', performActualSeek, { once: true });
+    } else {
+      console.log(`[VideoPlayer] Backup seek: Metadata ready (readyState: ${video.readyState}), seeking directly.`);
+      performActualSeek();
+    }
+
+    // Always listen for 'seeked' to finalize the process and update state.
+    video.addEventListener('seeked', afterActualSeek, { once: true });
+
+    return () => {
+      didUnmount = true;
+      console.log("[VideoPlayer] Backup seek useEffect: Cleanup listeners.");
+      if (video) {
+        video.removeEventListener('loadedmetadata', performActualSeek);
+        video.removeEventListener('seeked', afterActualSeek);
+      }
+    };
+  }, [videoRef.current, videoUrl, pendingInitialTime]); // Specifically watch for videoRef.current to become available
 
   const resetVideoState = useCallback(() => {
-    if (videoUrl) {
-      URL.revokeObjectURL(videoUrl);
+    console.log("[VideoPlayer] resetVideoState called.");
+    if (videoUrlObjectRef.current) { 
+      URL.revokeObjectURL(videoUrlObjectRef.current);
+      console.log("[VideoPlayer] Revoked object URL in resetVideoState:", videoUrlObjectRef.current);
+      videoUrlObjectRef.current = null;
     }
     setVideoUrl(null);
     setFileName("");
     setIsPlaying(false);
     setVideoError(null);
     setCurrentTime(0);
+    setPendingInitialTime(null); // Also reset pending time
     if (videoRef.current) {
-      videoRef.current.src = ""; // Clear the src attribute
-      videoRef.current.load(); // Reset the media element
+      videoRef.current.src = ""; 
+      videoRef.current.load(); 
+      console.log("[VideoPlayer] Cleared video src and called load() in resetVideoState.");
     }
-  }, [videoUrl]);
+  }, []); // No dependencies needed if using ref and setters
+
+  // Effect for cleaning up the object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (videoUrlObjectRef.current) {
+        URL.revokeObjectURL(videoUrlObjectRef.current);
+        console.log("[VideoPlayer] Revoked object URL on unmount:", videoUrlObjectRef.current);
+        videoUrlObjectRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array means run on mount/unmount
 
   return {
     videoUrl,
-    setVideoUrl,
+    setVideoUrl, 
     isPlaying,
     setIsPlaying,
     fileName,
-    setFileName,
+    setFileName, 
     videoError,
-    setVideoError,
+    setVideoError, 
     currentTime,
-    setCurrentTime,
+    setCurrentTime, 
     videoRef,
     togglePlayPause,
     handleTimeUpdate,
