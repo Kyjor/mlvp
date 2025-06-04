@@ -1114,3 +1114,254 @@ button {
     color: #b0b0b0;
   }
 }
+
+/* Audio Recording Controls */
+.audio-recording-controls {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+}
+
+.audio-recording-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.settings-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2em;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.settings-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.audio-recording-settings {
+  background: #eeeeee;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.setting-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.setting-group label {
+  font-size: 0.9em;
+  color: #555;
+  white-space: nowrap;
+}
+
+.setting-group select {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.9em;
+}
+
+.setting-help {
+  font-size: 0.85em;
+  color: #777;
+  margin: 0;
+  font-style: italic;
+}
+
+.audio-recording-controls-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recording-status {
+  display: flex;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.recording-active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #dc3545;
+  font-weight: 500;
+}
+
+.recording-indicator {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.recording-inactive {
+  color: #666;
+}
+
+.recording-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.start-recording-btn,
+.stop-recording-btn,
+.download-audio-btn,
+.copy-audio-data-url-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 0.9em;
+}
+
+.start-recording-btn {
+  background: #28a745;
+  color: white;
+}
+
+.start-recording-btn:hover {
+  background: #218838;
+}
+
+.stop-recording-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.stop-recording-btn:hover {
+  background: #c82333;
+}
+
+.download-audio-btn {
+  background: #007bff;
+  color: white;
+}
+
+.download-audio-btn:hover {
+  background: #0056b3;
+}
+
+.copy-audio-data-url-btn {
+  background: #6f42c1;
+  color: white;
+}
+
+.copy-audio-data-url-btn:hover {
+  background: #5a2d91;
+}
+
+.audio-recording-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  border: 1px solid #f5c6cb;
+}
+
+.audio-recording-instructions {
+  border-top: 1px solid #ddd;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.audio-recording-instructions p {
+  margin: 4px 0;
+  font-size: 0.85em;
+  color: #666;
+}
+
+.audio-recording-instructions strong {
+  color: #333;
+}
+
+.unsupported-message {
+  color: #856404;
+  background: #fff3cd;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #ffeaa7;
+  font-size: 0.9em;
+}
+
+/* Dark mode styles for audio recording */
+@media (prefers-color-scheme: dark) {
+  .audio-recording-controls {
+    background: #343a40;
+    border-color: #495057;
+  }
+  
+  .audio-recording-header {
+    color: #f8f9fa;
+  }
+  
+  .settings-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .audio-recording-settings {
+    background: #495057;
+  }
+  
+  .setting-group label {
+    color: #adb5bd;
+  }
+  
+  .setting-group select {
+    background: #2d3139;
+    border-color: #495057;
+    color: #f8f9fa;
+  }
+  
+  .setting-help {
+    color: #9ca3af;
+  }
+  
+  .recording-inactive {
+    color: #adb5bd;
+  }
+  
+  .audio-recording-error {
+    background: #721c24;
+    color: #f8d7da;
+    border-color: #842029;
+  }
+  
+  .audio-recording-instructions {
+    border-top-color: #495057;
+  }
+  
+  .audio-recording-instructions p {
+    color: #adb5bd;
+  }
+  
+  .audio-recording-instructions strong {
+    color: #f8f9fa;
+  }
+  
+  .unsupported-message {
+    background: #664d03;
+    color: #ffecb5;
+    border-color: #997404;
+  }
+}

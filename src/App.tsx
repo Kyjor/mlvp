@@ -4,9 +4,11 @@ import { useSubtitleCustomization } from "./hooks/useSubtitleCustomization";
 import { isVideoFile, isSubtitleFile } from "./utils/fileUtils";
 import { useVideoPlayer } from "./hooks/useVideoPlayer";
 import { useSubtitleManager } from "./hooks/useSubtitleManager";
+import { useAudioRecording } from "./hooks/useAudioRecording";
 import { FileDropZone } from "./components/FileDropZone";
 import { VideoDisplayArea } from "./components/VideoDisplayArea";
 import { YouTubeSubtitlePanel } from "./components/YouTubeSubtitlePanel";
+import { AudioRecordingControls } from "./components/AudioRecordingControls";
 import { CachedPlayerData, CachedSubtitleTrack, SubtitleCue } from "./types";
 import { loadPlayerData, savePlayerData, clearPlayerData } from "./utils/cacheManager";
 import { parseVttContent } from "./utils/subtitleParser";
@@ -28,6 +30,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Checking for saved session...");
   const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
+  const [showAudioRecording, setShowAudioRecording] = useState(false);
   const [cachedVideoFileIdentifier, setCachedVideoFileIdentifier] = useState<string | null>(null);
   const [cachedSeekTime, setCachedSeekTime] = useState<number | null>(null);
   const [initialCacheLoadComplete, setInitialCacheLoadComplete] = useState(false);
@@ -49,6 +52,10 @@ function App() {
     initialTracks: initialSubtitleTracks,
     initialActiveId: initialActiveSubtitleId,
     initialOffset: initialSubtitleSettings?.offset,
+  });
+  const audioRecordingHook = useAudioRecording({
+    videoRef: videoPlayerHook.videoRef,
+    bufferDurationSeconds: 30
   });
   
   useEffect(() => {
@@ -376,6 +383,9 @@ function App() {
             <button onClick={() => setShowSubtitlePanel(!showSubtitlePanel)}>
               Subtitles/CC
             </button>
+            <button onClick={() => setShowAudioRecording(!showAudioRecording)}>
+              Audio Recording
+            </button>
             <button onClick={clearAll}>Clear Video & Cache</button>
           </div>
           
@@ -386,6 +396,20 @@ function App() {
               activeSubtitle={subtitleManagerHook.activeSubtitle}
               onToggleSubtitle={subtitleManagerHook.toggleActiveSubtitle}
               onClose={() => setShowSubtitlePanel(false)} 
+            />
+          )}
+
+          {showAudioRecording && (
+            <AudioRecordingControls
+              isRecording={audioRecordingHook.isRecording}
+              isSupported={audioRecordingHook.isSupported}
+              error={audioRecordingHook.error}
+              bufferDuration={audioRecordingHook.bufferDuration}
+              onStartRecording={audioRecordingHook.startRecording}
+              onStopRecording={audioRecordingHook.stopRecording}
+              onDownloadAudio={audioRecordingHook.downloadBufferedAudio}
+              onCopyAudioDataUrl={audioRecordingHook.copyAudioDataUrl}
+              onSetBufferDuration={audioRecordingHook.setBufferDuration}
             />
           )}
         </>
