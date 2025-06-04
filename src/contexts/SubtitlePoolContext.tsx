@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useRef, useCallback, useEffect } from 'react';
 import { SubtitleCue } from '../types';
-import { filterParentheticalText } from '../utils/subtitleParser';
+import { filterParentheticalText, colorizeJapaneseText } from '../utils/subtitleParser';
 
 interface SubtitleElement {
   id: string;
@@ -11,7 +11,7 @@ interface SubtitleElement {
 }
 
 interface SubtitlePoolContextType {
-  createSubtitleElements: (trackId: string, cues: SubtitleCue[]) => void;
+  createSubtitleElements: (trackId: string, cues: SubtitleCue[]) => Promise<void>;
   updateVisibleSubtitles: (
     currentTime: number, 
     primaryTrackId: string | null, 
@@ -51,7 +51,7 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   // Create subtitle elements for all cues
-  const createSubtitleElements = useCallback((trackId: string, cues: SubtitleCue[]) => {
+  const createSubtitleElements = useCallback(async (trackId: string, cues: SubtitleCue[]) => {
     const pool = poolRef.current;
     const container = getPoolContainer();
     
@@ -66,7 +66,8 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
 
     // Create new elements for all cues
-    cues.forEach((cue, index) => {
+    for (let index = 0; index < cues.length; index++) {
+      const cue = cues[index];
       const elementId = `${trackId}-cue-${index}`;
       
       // Create container for this cue
@@ -81,7 +82,11 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Create subtitle segment with content
       const subtitleSegment = document.createElement('span');
       subtitleSegment.className = 'subtitle-segment';
-      subtitleSegment.innerHTML = filterParentheticalText(cue.text);
+      
+      // Process text: filter parenthetical content and colorize Japanese
+      const filteredText = filterParentheticalText(cue.text);
+      const colorizedText = await colorizeJapaneseText(filteredText);
+      subtitleSegment.innerHTML = colorizedText;
       
       // Create capture button
       const captureBtn = document.createElement('button');
@@ -106,7 +111,7 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
         element: cueContainer,
         isVisible: false
       });
-    });
+    }
     
     console.log(`Pool now has ${pool.size} total elements, container has ${container.children.length} children`);
   }, [getPoolContainer]);
@@ -126,36 +131,53 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const secondaryAdjustedTime = currentTime - secondaryOffset;
     
     pool.forEach((subtitleElement) => {
-      const { cue, element, trackId } = subtitleElement;
+      const { cue, element, trackId: elementTrackId } = subtitleElement;
+
+      const isDesignatedPrimary = (elementTrackId === primaryTrackId);
+      const isDesignatedSecondary = (elementTrackId === secondaryTrackId);
+
+      const isCueActiveForPrimary = isDesignatedPrimary &&
+                                  primaryAdjustedTime >= cue.startTime && 
+                                  primaryAdjustedTime <= cue.endTime;
+
+      const isCueActiveForSecondary = isDesignatedSecondary &&
+                                    secondaryAdjustedTime >= cue.startTime && 
+                                    secondaryAdjustedTime <= cue.endTime;
       
-      let shouldBeVisible = false;
-      let isPrimary = false;
+      const shouldDisplayAsPrimary = isCueActiveForPrimary;
+      const shouldDisplayAsSecondary = isCueActiveForSecondary && !shouldDisplayAsPrimary;
+
+      const shouldBeVisible = shouldDisplayAsPrimary || shouldDisplayAsSecondary;
       
-      // Check if it should be visible as primary track
-      if (trackId === primaryTrackId && 
-          primaryAdjustedTime >= cue.startTime && 
-          primaryAdjustedTime <= cue.endTime) {
-        shouldBeVisible = true;
-        isPrimary = true;
-      }
-      
-      // Check if it should be visible as secondary track
-      if (trackId === secondaryTrackId && 
-          secondaryAdjustedTime >= cue.startTime && 
-          secondaryAdjustedTime <= cue.endTime) {
-        shouldBeVisible = true;
-        isPrimary = false;
-      }
-      
-      if (shouldBeVisible && !subtitleElement.isVisible) {
-        // Show subtitle
-        element.style.display = 'flex';
-        element.classList.toggle('primary-subtitle', isPrimary);
-        element.classList.toggle('secondary-subtitle', !isPrimary);
-        element.classList.toggle('blur-secondary', !isPrimary && blurSecondary);
-        subtitleElement.isVisible = true;
+      if (shouldBeVisible) {
+        if (!subtitleElement.isVisible) {
+          // Make visible and set initial classes
+          element.style.display = 'flex';
+          subtitleElement.isVisible = true;
+          element.classList.toggle('primary-subtitle', shouldDisplayAsPrimary);
+          element.classList.toggle('secondary-subtitle', shouldDisplayAsSecondary);
+          element.classList.toggle('blur-secondary', shouldDisplayAsSecondary && !!blurSecondary);
+        } else {
+          // Already visible, update classes if needed
+          const needsPrimaryUpdate = element.classList.contains('primary-subtitle') !== shouldDisplayAsPrimary;
+          const needsSecondaryUpdate = element.classList.contains('secondary-subtitle') !== shouldDisplayAsSecondary;
+          
+          if (needsPrimaryUpdate) {
+            element.classList.toggle('primary-subtitle', shouldDisplayAsPrimary);
+          }
+          if (needsSecondaryUpdate) {
+            element.classList.toggle('secondary-subtitle', shouldDisplayAsSecondary);
+          }
+          
+          // Always update blur for all visible subtitles
+          if (shouldDisplayAsSecondary) {
+            element.classList.toggle('blur-secondary', !!blurSecondary);
+          } else {
+            element.classList.remove('blur-secondary');
+          }
+        }
         
-        // Update capture button handler
+        // Update capture button handler (can be done regardless of new/existing visibility if visible)
         const captureBtn = element.querySelector('.subtitle-capture-btn') as HTMLButtonElement;
         if (captureBtn && onCaptureAudio) {
           captureBtn.onclick = (e) => {
@@ -164,11 +186,12 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
             onCaptureAudio(cue.startTime, cue.endTime);
           };
         }
-      } else if (!shouldBeVisible && subtitleElement.isVisible) {
-        // Hide subtitle
-        element.style.display = 'none';
-        element.classList.remove('primary-subtitle', 'secondary-subtitle', 'blur-secondary');
-        subtitleElement.isVisible = false;
+      } else { // Should not be visible
+        if (subtitleElement.isVisible) {
+          element.style.display = 'none';
+          element.classList.remove('primary-subtitle', 'secondary-subtitle', 'blur-secondary');
+          subtitleElement.isVisible = false;
+        }
       }
     });
   }, []);

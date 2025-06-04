@@ -57,12 +57,12 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
   // Create pool elements for initial cached subtitles
   useEffect(() => {
     if (props?.initialTracks) {
-      props.initialTracks.forEach(cachedTrack => {
+      props.initialTracks.forEach(async (cachedTrack) => {
         try {
           if (cachedTrack.src.startsWith('data:text/vtt;charset=utf-8,')) {
             const vttContent = decodeURIComponent(cachedTrack.src.split(',')[1]);
             const cues = parseVttContent(vttContent);
-            createSubtitleElements(cachedTrack.id, cues);
+            await createSubtitleElements(cachedTrack.id, cues);
           }
         } catch (e) {
           console.error("Error creating pool elements for cached track:", cachedTrack.label, e);
@@ -118,7 +118,7 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
     };
   }, [subtitleTracks.length]);
 
-  const addSubtitleData = useCallback((trackId: string, cues: SubtitleCue[]) => {
+  const addSubtitleData = useCallback(async (trackId: string, cues: SubtitleCue[]) => {
     setSubtitleData(prev => {
       const newMap = new Map(prev);
       newMap.set(trackId, cues);
@@ -126,7 +126,7 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
     });
     
     // Create pool elements for this track
-    createSubtitleElements(trackId, cues);
+    await createSubtitleElements(trackId, cues);
   }, [createSubtitleElements]);
 
   const addSubtitleFiles = useCallback(async (files: File[]) => {
@@ -169,7 +169,7 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
         newData.set(trackId, cues);
         
         // Create pool elements for this track
-        createSubtitleElements(trackId, cues);
+        await createSubtitleElements(trackId, cues);
 
       } catch (error) {
         console.error(`Error processing subtitle file ${file.name}:`, error);

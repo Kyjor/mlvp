@@ -1459,8 +1459,23 @@ button {
 }
 
 /* Dual Subtitle Styles */
+.subtitle-pool-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: auto;
+}
+
 .pooled-subtitle.primary-subtitle {
+  order: 1; /* Primary subtitles appear first */
   margin-bottom: 8px;
+  z-index: 2;
+}
+
+.pooled-subtitle.secondary-subtitle {
+  order: 2; /* Secondary subtitles appear second */
+  margin-top: 8px;
+  z-index: 1;
 }
 
 .pooled-subtitle.primary-subtitle .subtitle-segment {
@@ -1469,10 +1484,6 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   padding: 4px 8px;
-}
-
-.pooled-subtitle.secondary-subtitle {
-  margin-top: 8px;
 }
 
 .pooled-subtitle.secondary-subtitle .subtitle-segment {
@@ -1640,5 +1651,43 @@ button {
 @media (prefers-color-scheme: dark) {
   .blur-toggle label {
     color: #b3d9ff;
+  }
+}
+
+/* Japanese word coloring */
+.jp-word-0 { color: #ff6b6b; } /* Red */
+.jp-word-1 { color: #4ecdc4; } /* Teal */
+.jp-word-2 { color: #45b7d1; } /* Blue */
+.jp-word-3 { color: #f9ca24; } /* Yellow */
+.jp-word-4 { color: #f0932b; } /* Orange */
+.jp-word-5 { color: #eb4d4b; } /* Dark Red */
+.jp-word-6 { color: #6c5ce7; } /* Purple */
+.jp-word-7 { color: #26de81; } /* Green */
+
+.jp-punctuation {
+  color: #a4b0be; /* Gray for punctuation */
+  font-weight: normal;
+}
+
+/* Ensure Japanese text is easily readable */
+.jp-word-0, .jp-word-1, .jp-word-2, .jp-word-3, 
+.jp-word-4, .jp-word-5, .jp-word-6, .jp-word-7 {
+  font-weight: 500;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/* Dark mode adjustments for Japanese coloring */
+@media (prefers-color-scheme: dark) {
+  .jp-word-0 { color: #ff7675; }
+  .jp-word-1 { color: #81ecec; }
+  .jp-word-2 { color: #74b9ff; }
+  .jp-word-3 { color: #fdcb6e; }
+  .jp-word-4 { color: #e17055; }
+  .jp-word-5 { color: #fd79a8; }
+  .jp-word-6 { color: #a29bfe; }
+  .jp-word-7 { color: #00b894; }
+  
+  .jp-punctuation {
+    color: #636e72;
   }
 }

@@ -13,6 +13,7 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@types/video.js": "^7.3.58",
+    "parse-japanese": "^0.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-player": "^2.16.0",

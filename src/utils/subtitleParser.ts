@@ -1,5 +1,81 @@
 import { SubtitleCue } from '../types';
 
+// Check if text contains Japanese characters
+const containsJapanese = (text: string): boolean => {
+  // Japanese character ranges: Hiragana, Katakana, Kanji
+  const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
+  return japaneseRegex.test(text);
+};
+
+// Parse Japanese text and add color spans
+export const colorizeJapaneseText = async (text: string): Promise<string> => {
+  if (!containsJapanese(text)) {
+    return text; // Return unchanged if no Japanese
+  }
+
+  const ParseJapaneseClass = await initializeJapaneseParser();
+  if (!ParseJapaneseClass) {
+    return text; // Return unchanged if parser failed to load
+  }
+
+  try {
+    const parser = new ParseJapaneseClass({ pos: false }); // We don't need POS for now
+    
+    return new Promise((resolve) => {
+      parser.parse(text, (cst: any) => {
+        const colorizedText = processJapaneseNodes(cst);
+        resolve(colorizedText);
+      });
+    });
+  } catch (error) {
+    console.warn('Failed to parse Japanese text:', error);
+    return text; // Return unchanged on error
+  }
+};
+
+// Process NLCST nodes and add color spans
+const processJapaneseNodes = (node: any): string => {
+  if (!node) return '';
+  
+  // Handle different node types
+  if (node.type === 'TextNode') {
+    // Assign colors based on character content or position
+    const colorClass = getWordColorClass(node.value);
+    return `<span class="${colorClass}">${node.value}</span>`;
+  }
+  
+  if (node.type === 'PunctuationNode') {
+    return `<span class="jp-punctuation">${node.value}</span>`;
+  }
+  
+  if (node.type === 'WhiteSpaceNode') {
+    return node.value;
+  }
+  
+  // For nodes with children, process all children
+  if (node.children && Array.isArray(node.children)) {
+    return node.children.map(processJapaneseNodes).join('');
+  }
+  
+  // Fallback - if node has value, return it
+  if (node.value) {
+    return node.value;
+  }
+  
+  return '';
+};
+
+// Assign color classes to words for visual variety
+const getWordColorClass = (word: string): string => {
+  // Simple hash-based color assignment for consistent coloring
+  const hash = word.split('').reduce((acc, char) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc);
+  }, 0);
+  
+  const colorIndex = Math.abs(hash) % 8; // 8 different colors
+  return `jp-word-${colorIndex}`;
+};
+
 // Parse VTT content into subtitle cues
 export const parseVttContent = (vttContent: string): SubtitleCue[] => {
   const cues: SubtitleCue[] = [];
@@ -71,4 +147,19 @@ export const filterParentheticalText = (text: string): string => {
     .replace(/\([^)]*\)/g, '') // ASCII parentheses
     .replace(/（[^）]*）/g, '') // Full-width parentheses (Japanese)
     .trim();
+};
+
+// Dynamically import parse-japanese to avoid SSR issues
+let ParseJapanese: any = null;
+
+const initializeJapaneseParser = async () => {
+  if (!ParseJapanese) {
+    try {
+      const module = await import('parse-japanese');
+      ParseJapanese = module.default;
+    } catch (error) {
+      console.warn('Failed to load parse-japanese:', error);
+    }
+  }
+  return ParseJapanese;
 }; 

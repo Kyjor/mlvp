@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SubtitleCue, SubtitlePosition } from '../types';
-import { filterParentheticalText } from '../utils/subtitleParser';
+import { filterParentheticalText, colorizeJapaneseText } from '../utils/subtitleParser';
 
 interface SubtitleOverlayProps {
   currentCues: SubtitleCue[];
@@ -25,6 +25,23 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
   onWheel,
   onCaptureAudio,
 }) => {
+  const [colorizedCues, setColorizedCues] = useState<{ cue: SubtitleCue; colorizedText: string }[]>([]);
+
+  // Process cues for Japanese colorization
+  useEffect(() => {
+    const processCurrentCues = async () => {
+      const processed = await Promise.all(
+        currentCues.map(async (cue) => {
+          const filteredText = filterParentheticalText(cue.text);
+          const colorizedText = await colorizeJapaneseText(filteredText);
+          return { cue, colorizedText };
+        })
+      );
+      setColorizedCues(processed);
+    };
+
+    processCurrentCues();
+  }, [currentCues]);
 
   const handleSubtitleClick = async (event: React.MouseEvent) => {
     if (event.ctrlKey && event.detail === 2) { // Ctrl+Double Click
@@ -87,7 +104,7 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
     }
   };
 
-  if (currentCues.length === 0 && !isDraggingSubtitle) { // Keep it visible if dragging, even if cues disappear
+  if (colorizedCues.length === 0 && !isDraggingSubtitle) { // Keep it visible if dragging, even if cues disappear
     return null;
   }
 
@@ -128,7 +145,7 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
       role="region" // More appropriate role for a region displaying subtitles
       aria-live="polite"
       aria-label="Subtitles display area"
-      title={currentCues.length > 0 ? "Ctrl+Double Click to copy. Ctrl+Drag to move. Alt+Drag Up/Right to resize." : "Subtitle controls: Ctrl+Drag to move. Alt+Drag Up/Right to resize."}
+      title={colorizedCues.length > 0 ? "Ctrl+Double Click to copy. Ctrl+Drag to move. Alt+Drag Up/Right to resize." : "Subtitle controls: Ctrl+Drag to move. Alt+Drag Up/Right to resize."}
     >
       {isDraggingSubtitle && (
         <div className="subtitle-drag-hint">
@@ -145,20 +162,20 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
         onClick={handleSubtitleClick} // Shift+Click for copying is on the text window itself
         role="button" // Semantically, clicking it does something
         tabIndex={0} // Make it focusable for accessibility
-        aria-label={currentCues.length > 0 ? `Current subtitle: ${currentCues.map(c => c.text).join(' ')}` : "No active subtitle"}
+        aria-label={colorizedCues.length > 0 ? `Current subtitle: ${colorizedCues.map(c => c.cue.text).join(' ')}` : "No active subtitle"}
       >
         <div className="subtitle-content">
-          {currentCues.map((cue, index) => (
+          {colorizedCues.map((item, index) => (
             <div key={index} className="subtitle-line-container">
               <span className="subtitle-line">
-                <span className="subtitle-segment" dangerouslySetInnerHTML={{ __html: filterParentheticalText(cue.text) }} />
+                <span className="subtitle-segment" dangerouslySetInnerHTML={{ __html: item.colorizedText }} />
               </span>
               {onCaptureAudio && (
                 <button 
                   className={`subtitle-capture-btn ${isCapturingAudio ? 'capturing' : ''}`}
-                  onClick={(e) => handleCaptureClick(e, cue)}
+                  onClick={(e) => handleCaptureClick(e, item.cue)}
                   disabled={isCapturingAudio}
-                  title={`Capture audio for this line (${cue.startTime.toFixed(1)}s - ${cue.endTime.toFixed(1)}s ± 2s)`}
+                  title={`Capture audio for this line (${item.cue.startTime.toFixed(1)}s - ${item.cue.endTime.toFixed(1)}s ± 2s)`}
                   aria-label="Capture audio for this subtitle line"
                 >
                   {isCapturingAudio ? '⏺️' : '🎤'}
