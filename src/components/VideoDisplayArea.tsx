@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SubtitleTrack, SubtitleCue, SubtitlePosition } from '../types';
 import { SubtitleControls } from './SubtitleControls';
 import { PooledSubtitleOverlay } from './PooledSubtitleOverlay';
@@ -87,6 +87,28 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onToggleBlurSecondary,
 }) => {
   if (!videoUrl) return null; // Should not happen if App.tsx logic is correct
+
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleFullscreenToggle = () => {
+    if (!videoWrapperRef.current) return;
+    if (!document.fullscreenElement) {
+      videoWrapperRef.current.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   return (
     <div className="video-container">
@@ -187,6 +209,11 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
             blurSecondary={blurSecondary}
           />
         </div>
+      </div>
+      <div className="video-controls">
+        <button onClick={handleFullscreenToggle}>
+          {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+        </button>
       </div>
     </div>
   );
