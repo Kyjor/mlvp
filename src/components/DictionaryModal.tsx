@@ -34,9 +34,10 @@ export interface DictionaryModalProps {
   error?: string;
   sourceText?: string;
   secondarySourceText?: string;
+  screenshot?: string; // Base64 data URL
 }
 
-export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose, word, results, loading, error, sourceText, secondarySourceText }) => {
+export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose, word, results, loading, error, sourceText, secondarySourceText, screenshot }) => {
   if (!open) return null;
   
   // Helper function to copy text to clipboard
@@ -46,6 +47,22 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
       // Could add a toast notification here
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  // Helper function to copy image to clipboard
+  const copyImageToClipboard = async (dataUrl: string) => {
+    try {
+      // Convert data URL to blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      
+      // Copy to clipboard
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
+    } catch (err) {
+      console.error('Failed to copy image to clipboard:', err);
     }
   };
 
@@ -85,8 +102,8 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
     backgroundColor: 'white',
     borderRadius: '8px',
     padding: '24px',
-    maxWidth: '700px',
-    maxHeight: '80vh',
+    maxWidth: '800px',
+    maxHeight: '90vh',
     width: '100%',
     overflow: 'auto',
     boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
@@ -121,6 +138,38 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
         <h2>Dictionary Lookup: <span style={{color: '#0066cc'}}>{word}</span></h2>
         <button style={closeButtonStyle} onClick={onClose}>×</button>
         
+        {/* Screenshot */}
+        {screenshot && (
+          <div style={{
+            marginBottom: '12px',
+            padding: '12px',
+            backgroundColor: '#fafafa',
+            borderRadius: '6px',
+            borderLeft: '4px solid #ff6b35'
+          }}>
+            <div style={{fontSize: '14px', color: '#666', marginBottom: '8px'}}>
+              Video frame:
+              <button 
+                style={copyButtonStyle}
+                onClick={() => copyImageToClipboard(screenshot)}
+                title="Copy screenshot"
+              >
+                📋
+              </button>
+            </div>
+            <img 
+              src={screenshot} 
+              alt="Video frame screenshot"
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                borderRadius: '4px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+            />
+          </div>
+        )}
+
         {/* Primary subtitle sentence */}
         {sourceText && (
           <div style={{

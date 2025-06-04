@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { SubtitlePosition } from '../types';
 import { useSubtitlePool } from '../contexts/SubtitlePoolContext';
 import { filterParentheticalText } from '../utils/subtitleParser';
@@ -17,6 +17,7 @@ interface PooledSubtitleOverlayProps {
   isCapturingAudio: boolean;
   blurSecondary: boolean;
   subtitleRef: React.RefObject<HTMLDivElement>;
+  videoRef: React.RefObject<HTMLVideoElement>;
   onMouseDown: (e: React.MouseEvent) => void;
   onWheel: (e: React.WheelEvent) => void;
   onCaptureAudio?: (startTime: number, endTime: number) => void;
@@ -31,9 +32,9 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
   primarySubtitleOffset,
   secondarySubtitleOffset,
   isDraggingSubtitle,
-  isCapturingAudio,
   blurSecondary,
   subtitleRef,
+  videoRef,
   onMouseDown,
   onWheel,
   onCaptureAudio,
@@ -44,6 +45,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
   const [selectedText, setSelectedText] = useState('');
   const [sourceText, setSourceText] = useState('');
   const [secondarySourceText, setSecondarySourceText] = useState('');
+  const [screenshot, setScreenshot] = useState<string>('');
   const [modalOpen, setModalOpen] = useState(false);
   const [lookupResults, setLookupResults] = useState<any[]>([]);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -69,12 +71,43 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
     return nodeIsOrInside((node as any).parentNode, container);
   }
 
+  // Capture video screenshot
+  const captureVideoScreenshot = useCallback((): string => {
+    if (!videoRef.current) return '';
+    
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return '';
+      
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth || video.clientWidth;
+      canvas.height = video.videoHeight || video.clientHeight;
+      
+      // Draw the current video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert to data URL
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.error('Failed to capture screenshot:', error);
+      return '';
+    }
+  }, [videoRef]);
+
   // Lookup handler
   const handleLookup = async (text: string) => {
     setModalOpen(true);
     setLookupLoading(true);
     setLookupError('');
     setLookupResults([]);
+    
+    // Capture screenshot
+    const screenshotData = captureVideoScreenshot();
+    setScreenshot(screenshotData);
+    
     try {
       const results = await lookupKanjiBeginning(text, 5);
       setLookupResults(results);
@@ -93,6 +126,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
     setSelectedText('');
     setSourceText('');
     setSecondarySourceText('');
+    setScreenshot('');
   };
 
   // Helper to select word at click position
@@ -310,6 +344,7 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
         error={lookupError}
         sourceText={sourceText}
         secondarySourceText={secondarySourceText}
+        screenshot={screenshot}
       />
     </>
   );

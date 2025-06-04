@@ -203,6 +203,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
             isDraggingSubtitle={isDraggingSubtitle}
             isCapturingAudio={isCapturingAudio}
             subtitleRef={subtitleRef}
+            videoRef={videoRef}
             onMouseDown={onSubtitleMouseDown}
             onWheel={onSubtitleWheel}
             onCaptureAudio={onCaptureAudio}
