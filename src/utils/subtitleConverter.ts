@@ -86,7 +86,7 @@ export const convertSrtToVtt = (srtContent: string): string => {
   const cleanContent = srtContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const blocks = cleanContent.split(/\n\s*\n/);
   
-  blocks.forEach((block, index) => {
+  blocks.forEach((block, _) => {
     const lines = block.trim().split('\n');
     if (lines.length >= 3) {
       // Skip the subtitle number (first line)

@@ -91,44 +91,6 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
     }
   }, [activeSubtitle, secondarySubtitle, subtitleData, subtitleOffset, secondarySubtitleOffset]);
 
-  const processSingleSubtitleFile = useCallback(async (file: File): Promise<SubtitleTrack & { vttContent: string }> => {
-    console.log('Processing subtitle file:', file.name);
-    const rawContent = await file.text();
-    const fileName = file.name;
-    const extension = fileName.toLowerCase().split('.').pop();
-    
-    let vttContent = rawContent;
-    if (extension === 'srt') vttContent = convertSrtToVtt(rawContent);
-    else if (extension === 'ass' || extension === 'ssa') vttContent = convertAssToVtt(rawContent);
-    else if (extension !== 'vtt') vttContent = convertSrtToVtt(rawContent); // Basic fallback
-    if (!vttContent.startsWith('WEBVTT')) vttContent = 'WEBVTT\n\n' + vttContent;
-    
-    const cues = parseVttContent(vttContent);
-    const trackId = `subtitle-${Date.now()}-${Math.random()}`;
-    
-    setSubtitleData(prev => new Map(prev.set(trackId, cues)));
-    const vttDataUrl = `data:text/vtt;charset=utf-8,${encodeURIComponent(vttContent)}`;
-    
-    return {
-      id: trackId,
-      label: fileName.replace(/\.[^/.]+$/, ""),
-      src: vttDataUrl,
-      default: subtitleTracks.length === 0,
-      vttContent: vttContent
-    };
-  }, [subtitleTracks.length]);
-
-  const addSubtitleData = useCallback(async (trackId: string, cues: SubtitleCue[]) => {
-    setSubtitleData(prev => {
-      const newMap = new Map(prev);
-      newMap.set(trackId, cues);
-      return newMap;
-    });
-    
-    // Create pool elements for this track
-    await createSubtitleElements(trackId, cues);
-  }, [createSubtitleElements]);
-
   const addSubtitleFiles = useCallback(async (files: File[]) => {
     const newTracks: SubtitleTrack[] = [];
     const newData = new Map(subtitleData);

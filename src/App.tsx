@@ -40,7 +40,6 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const subtitleInputRef = useRef<HTMLInputElement>(null);
 
-  const [initialVideoPlayerState, setInitialVideoPlayerState] = useState<{fileName: string | null, currentTime: number}>({fileName: null, currentTime: 0});
   const [initialSubtitleTracks, setInitialSubtitleTracks] = useState<CachedSubtitleTrack[] | undefined>(undefined);
   const [initialActiveSubtitleId, setInitialActiveSubtitleId] = useState<string | null | undefined>(undefined);
   const [initialSecondarySubtitleId, setInitialSecondarySubtitleId] = useState<string | null | undefined>(undefined);
@@ -331,8 +330,6 @@ function App() {
             subtitleTracks={subtitleManagerHook.subtitleTracks}
             activeSubtitle={subtitleManagerHook.activeSubtitle}
             secondarySubtitle={subtitleManagerHook.secondarySubtitle}
-            currentCues={subtitleManagerHook.currentCues}
-            currentSecondaryCues={subtitleManagerHook.currentSecondaryCues}
             subtitlePosition={subtitleCustomizationHook.subtitlePosition}
             subtitleSize={subtitleCustomizationHook.subtitleSize}
             isDraggingSubtitle={subtitleCustomizationHook.isDraggingSubtitle}

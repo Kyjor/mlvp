@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SubtitleCue, SubtitlePosition } from '../types';
 import { filterParentheticalText, colorizeJapaneseText } from '../utils/subtitleParser';
 import { DictionaryModal } from './DictionaryModal';

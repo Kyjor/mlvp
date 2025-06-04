@@ -72,22 +72,6 @@ export const useSubtitleCustomization = (props?: UseSubtitleCustomizationProps) 
 
     } else if (event.altKey) { // Resizing with Alt+Drag
       // Calculate change relative to the center of the subtitle for intuitive scaling
-      const currentRect = subtitleRef.current.getBoundingClientRect();
-      const centerX = currentRect.left + currentRect.width / 2;
-      const centerY = currentRect.top + currentRect.height / 2;
-
-      // Determine dominant drag direction for resizing
-      // If moving more horizontally away from center -> increase width/size
-      // If moving more vertically away from center -> increase height/size
-      // Simplified: use combined distance or primary axis
-      const changeX = event.clientX - centerX;
-      const changeY = event.clientY - centerY;
-      
-      // Original distance from center to mouse down point for relative scaling factor
-      const initialDistX = dragState.startX - (dragState.initialX + dragState.initialWidth / 2);
-      const initialDistY = dragState.startY - (dragState.initialY + dragState.initialHeight / 2);
-      
-      const baseSizeForScaling = 100; // Assuming 100% is the reference
       
       // Consider the drag vector relative to the subtitle center
       // A drag to the right or up from center should increase size

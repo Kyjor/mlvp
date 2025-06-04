@@ -34,11 +34,6 @@ export const colorizeJapaneseText = async (text: string): Promise<string> => {
   }
 };
 
-// Process NLCST nodes and add color spans (no longer needed, but kept for compatibility)
-const processJapaneseNodes = (node: any): string => {
-  return '';
-};
-
 // Assign color classes to words for visual variety
 const getWordColorClass = (word: string): string => {
   // Simple hash-based color assignment for consistent coloring

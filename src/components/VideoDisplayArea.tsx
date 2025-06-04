@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SubtitleTrack, SubtitleCue, SubtitlePosition } from '../types';
+import { SubtitleTrack, SubtitlePosition } from '../types';
 import { SubtitleControls } from './SubtitleControls';
 import { PooledSubtitleOverlay } from './PooledSubtitleOverlay';
 
@@ -10,8 +10,6 @@ interface VideoDisplayAreaProps {
   subtitleTracks: SubtitleTrack[];
   activeSubtitle: string | null;
   secondarySubtitle: string | null;
-  currentCues: SubtitleCue[];
-  currentSecondaryCues: SubtitleCue[];
   subtitlePosition: SubtitlePosition;
   subtitleSize: number;
   isDraggingSubtitle: boolean;
@@ -55,8 +53,6 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   subtitleTracks,
   activeSubtitle,
   secondarySubtitle,
-  currentCues,
-  currentSecondaryCues,
   subtitlePosition,
   subtitleSize,
   isDraggingSubtitle,

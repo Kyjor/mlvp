@@ -396,7 +396,6 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30, initia
     }
 
     const video = videoRef.current;
-    const originalTime = video.currentTime;
     const captureStart = Math.max(0, startTime - bufferSeconds);
     const captureEnd = Math.min(video.duration || endTime + bufferSeconds, endTime + bufferSeconds);
     const captureDuration = captureEnd - captureStart;
