@@ -1,7 +1,7 @@
 import React from 'react';
 import { SubtitleTrack, SubtitleCue, SubtitlePosition } from '../types';
 import { SubtitleControls } from './SubtitleControls';
-import { SubtitleOverlay } from './SubtitleOverlay';
+import { PooledSubtitleOverlay } from './PooledSubtitleOverlay';
 
 interface VideoDisplayAreaProps {
   videoUrl: string | null;
@@ -16,6 +16,7 @@ interface VideoDisplayAreaProps {
   isSubtitleDragOver: boolean; 
   subtitleOffset: number;
   isCapturingAudio: boolean;
+  currentTime?: number;
 
   videoRef: React.RefObject<HTMLVideoElement>;
   videoWrapperRef: React.RefObject<HTMLDivElement>;
@@ -23,7 +24,7 @@ interface VideoDisplayAreaProps {
   subtitleInputRef: React.RefObject<HTMLInputElement>;
 
   onPlayPauseChange: (isPlaying: boolean) => void;
-  onTimeUpdate: () => void;
+  onTimeUpdate: (time: number) => void;
   onToggleActiveSubtitle: (trackId: string | null) => void;
   onRemoveSubtitleTrack: (trackId: string) => void;
   onResetSubtitlePosition: () => void;
@@ -35,7 +36,7 @@ interface VideoDisplayAreaProps {
   onDedicatedSubtitleDrop: (e: React.DragEvent) => void;
   onDedicatedSubtitleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOffsetChange: (newOffset: number) => void;
-  onCaptureAudio: (startTime: number, endTime: number) => void;
+  onCaptureAudio?: (startTime: number, endTime: number) => void;
 }
 
 export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
@@ -51,6 +52,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   isSubtitleDragOver,
   subtitleOffset,
   isCapturingAudio,
+  currentTime = 0,
   videoRef,
   videoWrapperRef,
   subtitleRef,
@@ -68,7 +70,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onDedicatedSubtitleDrop,
   onDedicatedSubtitleFileSelect,
   onOffsetChange,
-  onCaptureAudio
+  onCaptureAudio,
 }) => {
   if (!videoUrl) return null; // Should not happen if App.tsx logic is correct
 
@@ -134,31 +136,31 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
           ref={videoWrapperRef} 
         >
           <video
-            ref={videoRef} 
+            ref={videoRef}
             src={videoUrl}
             controls
-            width="100%"
-            height="auto"
-            onPlay={() => onPlayPauseChange(true)} 
-            onPause={() => onPlayPauseChange(false)} 
-            onTimeUpdate={onTimeUpdate} 
-            onLoadedMetadata={() => {
-              console.log('Video loaded:', fileName);
+            onPlay={() => onPlayPauseChange(true)}
+            onPause={() => onPlayPauseChange(false)}
+            onTimeUpdate={(e) => {
+              const video = e.target as HTMLVideoElement;
+              onTimeUpdate(video.currentTime);
             }}
-            crossOrigin="anonymous"
+            style={{ width: '100%', height: '100%' }}
           >
             Your browser does not support the video tag.
           </video>
           
-          <SubtitleOverlay
-            currentCues={currentCues} 
+          <PooledSubtitleOverlay
+            currentTime={currentTime}
+            activeTrackId={activeSubtitle}
             subtitlePosition={subtitlePosition} 
-            subtitleSize={subtitleSize} 
-            isDraggingSubtitle={isDraggingSubtitle} 
-            subtitleRef={subtitleRef} 
-            onMouseDown={onSubtitleMouseDown} 
-            onWheel={onSubtitleWheel} 
+            subtitleSize={subtitleSize}
+            subtitleOffset={subtitleOffset}
+            isDraggingSubtitle={isDraggingSubtitle}
             isCapturingAudio={isCapturingAudio}
+            subtitleRef={subtitleRef}
+            onMouseDown={onSubtitleMouseDown}
+            onWheel={onSubtitleWheel}
             onCaptureAudio={onCaptureAudio}
           />
         </div>

@@ -1419,3 +1419,41 @@ button {
     border-color: #997404;
   }
 }
+
+.subtitle-pool-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: auto;
+}
+
+.pooled-subtitle {
+  position: relative;
+  display: none; /* Hidden by default, shown via JS */
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.pooled-subtitle.visible {
+  display: flex !important;
+}
+
+/* Responsive subtitle sizing */
+@media (max-width: 768px) {
+  .subtitle-overlay-container {
+    left: 5%;
+    width: 90%;
+    max-width: 90%;
+  }
+  
+  .subtitle-segment {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .subtitle-segment {
+    font-size: 12px;
+  }
+}

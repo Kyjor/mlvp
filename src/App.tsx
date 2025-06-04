@@ -5,6 +5,7 @@ import { isVideoFile, isSubtitleFile } from "./utils/fileUtils";
 import { useVideoPlayer } from "./hooks/useVideoPlayer";
 import { useSubtitleManager } from "./hooks/useSubtitleManager";
 import { useAudioRecording } from "./hooks/useAudioRecording";
+import { SubtitlePoolProvider } from "./contexts/SubtitlePoolContext";
 import { FileDropZone } from "./components/FileDropZone";
 import { VideoDisplayArea } from "./components/VideoDisplayArea";
 import { YouTubeSubtitlePanel } from "./components/YouTubeSubtitlePanel";
@@ -318,6 +319,7 @@ function App() {
             isSubtitleDragOver={isSubtitleDragOver}
             subtitleOffset={subtitleManagerHook.subtitleOffset}
             isCapturingAudio={audioRecordingHook.isCapturingTimeRange}
+            currentTime={videoPlayerHook.currentTime}
             videoRef={videoPlayerHook.videoRef}
             videoWrapperRef={subtitleCustomizationHook.videoWrapperRef}
             subtitleRef={subtitleCustomizationHook.subtitleRef}
@@ -382,4 +384,10 @@ function App() {
   );
 }
 
-export default App;
+export default function AppWithProvider() {
+  return (
+    <SubtitlePoolProvider>
+      <App />
+    </SubtitlePoolProvider>
+  );
+}

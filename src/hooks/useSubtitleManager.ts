@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { SubtitleTrack, SubtitleCue, CachedSubtitleTrack } from '../types';
 import { convertAssToVtt, convertSrtToVtt } from '../utils/subtitleConverter';
 import { parseVttContent, getActiveCues } from '../utils/subtitleParser';
+import { useSubtitlePool } from '../contexts/SubtitlePoolContext';
 
 interface UseSubtitleManagerProps {
   initialTracks?: CachedSubtitleTrack[];
@@ -46,6 +47,25 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
   });
   const [currentCues, setCurrentCues] = useState<SubtitleCue[]>([]);
 
+  const { createSubtitleElements, clearTrackSubtitles, clearAllSubtitles } = useSubtitlePool();
+
+  // Create pool elements for initial cached subtitles
+  useEffect(() => {
+    if (props?.initialTracks) {
+      props.initialTracks.forEach(cachedTrack => {
+        try {
+          if (cachedTrack.src.startsWith('data:text/vtt;charset=utf-8,')) {
+            const vttContent = decodeURIComponent(cachedTrack.src.split(',')[1]);
+            const cues = parseVttContent(vttContent);
+            createSubtitleElements(cachedTrack.id, cues);
+          }
+        } catch (e) {
+          console.error("Error creating pool elements for cached track:", cachedTrack.label, e);
+        }
+      });
+    }
+  }, [props?.initialTracks, createSubtitleElements]);
+
   useEffect(() => {
     if (activeSubtitle && subtitleData.has(activeSubtitle)) {
       const cues = subtitleData.get(activeSubtitle)!;
@@ -84,36 +104,90 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
     };
   }, [subtitleTracks.length]);
 
+  const addSubtitleData = useCallback((trackId: string, cues: SubtitleCue[]) => {
+    setSubtitleData(prev => {
+      const newMap = new Map(prev);
+      newMap.set(trackId, cues);
+      return newMap;
+    });
+    
+    // Create pool elements for this track
+    createSubtitleElements(trackId, cues);
+  }, [createSubtitleElements]);
+
   const addSubtitleFiles = useCallback(async (files: File[]) => {
     const newTracks: SubtitleTrack[] = [];
-    const processedTracksData: Array<SubtitleTrack & {vttContentForCache?: string}> = [];
+    const newData = new Map(subtitleData);
 
     for (const file of files) {
+      const trackId = `subtitle-${Date.now()}-${Math.random()}`;
+      let vttContent = '';
+
       try {
-        const processedData = await processSingleSubtitleFile(file);
-        newTracks.push({id: processedData.id, label: processedData.label, src: processedData.src, default: processedData.default });
-      } catch (error) { 
-        console.error("Failed to process subtitle file:", file.name, error); 
+        const content = await file.text();
+        const extension = file.name.split('.').pop()?.toLowerCase() || '';
+
+        switch (extension) {
+          case 'vtt':
+            vttContent = content;
+            break;
+          case 'srt':
+            vttContent = convertSrtToVtt(content);
+            break;
+          case 'ass':
+          case 'ssa':
+            vttContent = convertAssToVtt(content);
+            break;
+          default:
+            console.warn(`Unsupported subtitle format: ${extension}`);
+            continue;
+        }
+
+        const cues = parseVttContent(vttContent);
+        const track: SubtitleTrack = {
+          id: trackId,
+          label: file.name,
+          src: `data:text/vtt;charset=utf-8,${encodeURIComponent(vttContent)}`,
+          default: newTracks.length === 0 && subtitleTracks.length === 0
+        };
+
+        newTracks.push(track);
+        newData.set(trackId, cues);
+        
+        // Create pool elements for this track
+        createSubtitleElements(trackId, cues);
+
+      } catch (error) {
+        console.error(`Error processing subtitle file ${file.name}:`, error);
       }
     }
-    
+
     if (newTracks.length > 0) {
       setSubtitleTracks(prev => [...prev, ...newTracks]);
+      setSubtitleData(newData);
+
+      // Set first track as active if no active track exists
       if (!activeSubtitle && newTracks.length > 0) {
-        setActiveSubtitle(prevActive => prevActive ?? newTracks[0].id);
+        setActiveSubtitle(newTracks[0].id);
       }
     }
-    return newTracks; 
-  }, [processSingleSubtitleFile, activeSubtitle]);
+  }, [subtitleData, subtitleTracks.length, activeSubtitle, createSubtitleElements]);
 
   const removeSubtitleTrack = useCallback((trackId: string) => {
     setSubtitleTracks(prev => prev.filter(track => track.id !== trackId));
-    setSubtitleData(prev => { const newMap = new Map(prev); newMap.delete(trackId); return newMap; });
+    setSubtitleData(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(trackId);
+      return newMap;
+    });
+    
+    // Clear pool elements for this track
+    clearTrackSubtitles(trackId);
+
     if (activeSubtitle === trackId) {
-      const remainingTracks = subtitleTracks.filter(track => track.id !== trackId);
-      setActiveSubtitle(remainingTracks.length > 1 ? remainingTracks.find(t=>t.id !== trackId)?.id ?? null : null);
+      setActiveSubtitle(null);
     }
-  }, [activeSubtitle, subtitleTracks]);
+  }, [activeSubtitle, clearTrackSubtitles]);
 
   const toggleActiveSubtitle = useCallback((trackId: string | null) => {
     setActiveSubtitle(trackId);
@@ -121,11 +195,14 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
 
   const resetSubtitleState = useCallback(() => {
     setSubtitleTracks([]);
-    setActiveSubtitle(null);
     setSubtitleData(new Map());
-    setCurrentCues([]);
+    setActiveSubtitle(null);
     setSubtitleOffset(0);
-  }, []);
+    setCurrentCues([]);
+    
+    // Clear all pool elements
+    clearAllSubtitles();
+  }, [clearAllSubtitles]);
 
   const updateSubtitleOffset = useCallback((newOffset: number) => {
     setSubtitleOffset(newOffset);

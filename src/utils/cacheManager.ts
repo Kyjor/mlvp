@@ -19,7 +19,7 @@ export const loadPlayerData = (): CachedPlayerData | null => {
       return null;
     }
     const playerData = JSON.parse(serializedData) as CachedPlayerData;
-    console.log('Player data loaded from cache', playerData);
+    //console.log('Player data loaded from cache', playerData);
     return playerData;
   } catch (error) {
     console.error('Error loading player data from localStorage:', error);
@@ -30,7 +30,7 @@ export const loadPlayerData = (): CachedPlayerData | null => {
 export const clearPlayerData = (): void => {
   try {
     localStorage.removeItem(CACHE_KEY);
-    console.log('Player data cleared from cache');
+    //console.log('Player data cleared from cache');
   } catch (error) {
     console.error('Error clearing player data from localStorage:', error);
   }
