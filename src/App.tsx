@@ -13,6 +13,7 @@ import { AudioRecordingControls } from "./components/AudioRecordingControls";
 import { CachedPlayerData, CachedSubtitleTrack, SubtitleCue } from "./types";
 import { loadPlayerData, savePlayerData, clearPlayerData } from "./utils/cacheManager";
 import { parseVttContent } from "./utils/subtitleParser";
+import { SubtitleEditorPanel } from "./components/SubtitleEditorPanel";
 
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
   let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -36,6 +37,8 @@ function App() {
   const [cachedVideoFileIdentifier, setCachedVideoFileIdentifier] = useState<string | null>(null);
   const [cachedSeekTime, setCachedSeekTime] = useState<number | null>(null);
   const [initialCacheLoadComplete, setInitialCacheLoadComplete] = useState(false);
+  const [showSubtitleEditor, setShowSubtitleEditor] = useState(false);
+  const [editorCues, setEditorCues] = useState<SubtitleCue[] | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const subtitleInputRef = useRef<HTMLInputElement>(null);
@@ -279,6 +282,34 @@ function App() {
     };
   }, [videoPlayerHook.videoUrl]);
   
+  // Helper to get cues for the active subtitle
+  const getActiveSubtitleCues = () => {
+    if (!subtitleManagerHook.activeSubtitle) return null;
+    return subtitleManagerHook.subtitleData.get(subtitleManagerHook.activeSubtitle) || null;
+  };
+
+  // Handler to open the editor
+  const openSubtitleEditor = () => {
+    const cues = getActiveSubtitleCues();
+    if (cues) {
+      setEditorCues([...cues]);
+      setShowSubtitleEditor(true);
+    }
+  };
+
+  // Handler to update cues in the subtitle manager
+  const handleCuesUpdate = (updatedCues: SubtitleCue[]) => {
+    if (subtitleManagerHook.activeSubtitle) {
+      subtitleManagerHook.setSubtitleData(
+        new Map([
+          ...subtitleManagerHook.subtitleData,
+          [subtitleManagerHook.activeSubtitle, updatedCues],
+        ])
+      );
+      setEditorCues([...updatedCues]);
+    }
+  };
+
   return (
     <main className="container">
       <h1>Video Player</h1>
@@ -374,6 +405,11 @@ function App() {
             <button onClick={() => setShowAudioRecording(!showAudioRecording)}>
               Audio Recording
             </button>
+            <button onClick={openSubtitleEditor}
+              disabled={!subtitleManagerHook.activeSubtitle || !getActiveSubtitleCues()}
+            >
+              Edit Subtitles
+            </button>
             <button onClick={clearAll}>Clear Video & Cache</button>
           </div>
           
@@ -403,6 +439,14 @@ function App() {
               onSetBufferDuration={audioRecordingHook.setBufferDuration}
               onSetDictionaryBufferSeconds={audioRecordingHook.setDictionaryBufferSeconds}
               onClearError={audioRecordingHook.clearError}
+            />
+          )}
+
+          {showSubtitleEditor && editorCues && (
+            <SubtitleEditorPanel
+              cues={editorCues}
+              onCuesUpdate={handleCuesUpdate}
+              onClose={() => setShowSubtitleEditor(false)}
             />
           )}
         </>
