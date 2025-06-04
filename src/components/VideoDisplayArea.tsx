@@ -15,6 +15,7 @@ interface VideoDisplayAreaProps {
   isDraggingSubtitle: boolean;
   isSubtitleDragOver: boolean; 
   subtitleOffset: number;
+  isCapturingAudio: boolean;
 
   videoRef: React.RefObject<HTMLVideoElement>;
   videoWrapperRef: React.RefObject<HTMLDivElement>;
@@ -34,6 +35,7 @@ interface VideoDisplayAreaProps {
   onDedicatedSubtitleDrop: (e: React.DragEvent) => void;
   onDedicatedSubtitleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOffsetChange: (newOffset: number) => void;
+  onCaptureAudio: (startTime: number, endTime: number) => void;
 }
 
 export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
@@ -48,6 +50,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   isDraggingSubtitle,
   isSubtitleDragOver,
   subtitleOffset,
+  isCapturingAudio,
   videoRef,
   videoWrapperRef,
   subtitleRef,
@@ -64,7 +67,8 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onDedicatedSubtitleDragLeave,
   onDedicatedSubtitleDrop,
   onDedicatedSubtitleFileSelect,
-  onOffsetChange
+  onOffsetChange,
+  onCaptureAudio
 }) => {
   if (!videoUrl) return null; // Should not happen if App.tsx logic is correct
 
@@ -154,6 +158,8 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
             subtitleRef={subtitleRef} 
             onMouseDown={onSubtitleMouseDown} 
             onWheel={onSubtitleWheel} 
+            isCapturingAudio={isCapturingAudio}
+            onCaptureAudio={onCaptureAudio}
           />
         </div>
       </div>

@@ -6,9 +6,11 @@ interface SubtitleOverlayProps {
   subtitlePosition: SubtitlePosition;
   subtitleSize: number;
   isDraggingSubtitle: boolean;
+  isCapturingAudio: boolean;
   subtitleRef: React.RefObject<HTMLDivElement>;
   onMouseDown: (e: React.MouseEvent) => void;
   onWheel: (e: React.WheelEvent) => void;
+  onCaptureAudio?: (startTime: number, endTime: number) => void;
 }
 
 export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
@@ -16,9 +18,11 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
   subtitlePosition,
   subtitleSize,
   isDraggingSubtitle,
+  isCapturingAudio,
   subtitleRef,
   onMouseDown,
   onWheel,
+  onCaptureAudio,
 }) => {
 
   const handleSubtitleClick = async (event: React.MouseEvent) => {
@@ -45,6 +49,15 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
     } else {
       // If not a shift-click, then it's a drag attempt, so call the original onMouseDown
       onMouseDown(event);
+    }
+  };
+
+  const handleCaptureClick = (event: React.MouseEvent, cue: SubtitleCue) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (onCaptureAudio && !isCapturingAudio) {
+      onCaptureAudio(cue.startTime, cue.endTime);
     }
   };
 
@@ -110,9 +123,22 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
       >
         <div className="subtitle-content">
           {currentCues.map((cue, index) => (
-            <span key={index} className="subtitle-line">
-              <span className="subtitle-segment" dangerouslySetInnerHTML={{ __html: cue.text }} />
-            </span>
+            <div key={index} className="subtitle-line-container">
+              <span className="subtitle-line">
+                <span className="subtitle-segment" dangerouslySetInnerHTML={{ __html: cue.text }} />
+              </span>
+              {onCaptureAudio && (
+                <button 
+                  className={`subtitle-capture-btn ${isCapturingAudio ? 'capturing' : ''}`}
+                  onClick={(e) => handleCaptureClick(e, cue)}
+                  disabled={isCapturingAudio}
+                  title={`Capture audio for this line (${cue.startTime.toFixed(1)}s - ${cue.endTime.toFixed(1)}s ± 2s)`}
+                  aria-label="Capture audio for this subtitle line"
+                >
+                  {isCapturingAudio ? '⏺️' : '🎤'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>

@@ -10,6 +10,7 @@ interface AudioRecordingState {
   isSupported: boolean;
   error: string | null;
   bufferDuration: number;
+  isCapturingTimeRange: boolean;
 }
 
 export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseAudioRecordingProps) => {
@@ -17,7 +18,8 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
     isRecording: false,
     isSupported: false,
     error: null,
-    bufferDuration: bufferDurationSeconds
+    bufferDuration: bufferDurationSeconds,
+    isCapturingTimeRange: false
   });
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -295,6 +297,133 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
     }
   }, [state.isRecording, createWavFile]);
 
+  // Capture audio for a specific time range (e.g., subtitle line + buffer)
+  const captureTimeRange = useCallback(async (startTime: number, endTime: number, bufferSeconds: number = 2) => {
+    if (!state.isSupported || !videoRef.current || state.isCapturingTimeRange) {
+      return;
+    }
+
+    const video = videoRef.current;
+    const originalTime = video.currentTime;
+    const captureStart = Math.max(0, startTime - bufferSeconds);
+    const captureEnd = Math.min(video.duration || endTime + bufferSeconds, endTime + bufferSeconds);
+    const captureDuration = captureEnd - captureStart;
+
+    if (captureDuration <= 0) {
+      setState(prev => ({ ...prev, error: 'Invalid time range for capture' }));
+      return;
+    }
+
+    setState(prev => ({ ...prev, isCapturingTimeRange: true, error: null }));
+
+    try {
+      // Create audio context for time-range capture
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      
+      // Create source from video element
+      const source = audioContext.createMediaElementSource(video);
+      
+      // Create script processor for audio capture
+      const processor = audioContext.createScriptProcessor(4096, 2, 2);
+      
+      // Array to store captured audio chunks
+      const capturedChunks: Float32Array[] = [];
+      const sampleRate = audioContext.sampleRate;
+      
+      // Process audio data
+      processor.onaudioprocess = (event) => {
+        const inputBuffer = event.inputBuffer;
+        const leftChannel = inputBuffer.getChannelData(0);
+        const rightChannel = inputBuffer.numberOfChannels > 1 ? inputBuffer.getChannelData(1) : leftChannel;
+        
+        // Mix to mono and store
+        const monoData = new Float32Array(leftChannel.length);
+        for (let i = 0; i < leftChannel.length; i++) {
+          monoData[i] = (leftChannel[i] + rightChannel[i]) / 2;
+        }
+        
+        capturedChunks.push(new Float32Array(monoData));
+      };
+
+      // Connect nodes
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+      // Seek to start time and play
+      video.currentTime = captureStart;
+      
+      // Wait for seek to complete
+      await new Promise<void>((resolve) => {
+        const onSeeked = () => {
+          video.removeEventListener('seeked', onSeeked);
+          resolve();
+        };
+        video.addEventListener('seeked', onSeeked);
+      });
+
+      // Start playback
+      if (video.paused) {
+        await video.play();
+      }
+
+      // Wait for capture duration
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, captureDuration * 1000);
+      });
+
+      // Stop capture
+      video.pause();
+      audioContext.close();
+
+      // Combine captured chunks
+      const totalSamples = capturedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const combinedBuffer = new Float32Array(totalSamples);
+      let offset = 0;
+      
+      for (const chunk of capturedChunks) {
+        combinedBuffer.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Create WAV file
+      const wavBlob = createWavFile(combinedBuffer, sampleRate);
+      
+      // Download the captured audio
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `subtitle-audio-${startTime.toFixed(1)}s-${endTime.toFixed(1)}s.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Return to original position
+      video.currentTime = originalTime;
+      
+      console.log(`Audio captured for time range ${captureStart.toFixed(1)}s - ${captureEnd.toFixed(1)}s`);
+      setState(prev => ({ ...prev, isCapturingTimeRange: false, error: null }));
+
+    } catch (error) {
+      console.error('Error capturing time range audio:', error);
+      setState(prev => ({ 
+        ...prev, 
+        isCapturingTimeRange: false,
+        error: error instanceof Error ? error.message : 'Failed to capture audio for time range' 
+      }));
+
+      // Return to original position on error
+      try {
+        videoRef.current!.currentTime = originalTime;
+      } catch (seekError) {
+        console.error('Error returning to original position:', seekError);
+      }
+    }
+  }, [state.isSupported, state.isCapturingTimeRange, createWavFile, videoRef]);
+
   // Update buffer duration
   const setBufferDuration = useCallback((duration: number) => {
     setState(prev => ({ ...prev, bufferDuration: duration }));
@@ -318,6 +447,7 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30 }: UseA
     stopRecording,
     downloadBufferedAudio,
     copyAudioDataUrl,
-    setBufferDuration
+    setBufferDuration,
+    captureTimeRange
   };
 }; 

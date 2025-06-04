@@ -5,6 +5,7 @@ interface AudioRecordingControlsProps {
   isSupported: boolean;
   error: string | null;
   bufferDuration: number;
+  isCapturingTimeRange: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onDownloadAudio: () => void;
@@ -17,6 +18,7 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
   isSupported,
   error,
   bufferDuration,
+  isCapturingTimeRange,
   onStartRecording,
   onStopRecording,
   onDownloadAudio,
@@ -88,13 +90,18 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
               <span className="recording-indicator">🔴</span>
               <span>Recording last {bufferDuration}s</span>
             </div>
+          ) : isCapturingTimeRange ? (
+            <div className="recording-active">
+              <span className="recording-indicator">🎤</span>
+              <span>Capturing subtitle audio...</span>
+            </div>
           ) : (
             <span className="recording-inactive">Audio recording stopped</span>
           )}
         </div>
 
         <div className="recording-buttons">
-          {!isRecording ? (
+          {!isRecording && !isCapturingTimeRange ? (
             <button 
               onClick={onStartRecording}
               className="start-recording-btn"
@@ -102,7 +109,7 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
             >
               Start Recording
             </button>
-          ) : (
+          ) : isRecording ? (
             <>
               <button 
                 onClick={onStopRecording}
@@ -126,7 +133,7 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
                 Copy Audio Data URL
               </button>
             </>
-          )}
+          ) : null}
         </div>
 
         {error && (
@@ -143,6 +150,7 @@ export const AudioRecordingControls: React.FC<AudioRecordingControlsProps> = ({
         <p>3. Click "Download Audio" to save the audio buffer</p>
         <p>4. Click "Copy Audio Data URL" to copy the audio data URL</p>
         <p>5. Paste the audio file in any application that supports WAV files</p>
+        <p>🎤 <strong>Subtitle Capture:</strong> Click the microphone button (🎤) on any subtitle line to capture that dialogue with ±2 second buffer!</p>
       </div>
     </div>
   );

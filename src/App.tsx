@@ -261,46 +261,6 @@ function App() {
     };
   }, [videoPlayerHook.videoUrl]);
   
-  const parseVttContent = (vttContent: string): SubtitleCue[] => {
-    const lines = vttContent.split(/\r?\n/);
-    const cues: SubtitleCue[] = [];
-    let i = 0;
-    while (i < lines.length) {
-        if (lines[i].includes('-->')) {
-            const timeParts = lines[i].split(' --> ');
-            if (timeParts.length === 2) {
-                const startTime = parseVttTime(timeParts[0]);
-                const endTime = parseVttTime(timeParts[1].split(' ')[0]);
-                let textLines: string[] = [];
-                i++;
-                while (i < lines.length && lines[i]) {
-                    textLines.push(lines[i]);
-                    i++;
-                }
-                if (startTime !== null && endTime !== null && textLines.length > 0) {
-                    cues.push({ startTime, endTime, text: textLines.join('\n') });
-                }
-            }
-        }
-        i++;
-    }
-    return cues;
-  };
-
-  const parseVttTime = (timeStr: string): number => {
-    const parts = timeStr.split(':');
-    let seconds = 0;
-    if (parts.length === 3) {
-        seconds += parseInt(parts[0]) * 3600;
-        seconds += parseInt(parts[1]) * 60;
-        seconds += parseFloat(parts[2].replace(',', '.'));
-    } else if (parts.length === 2) {
-        seconds += parseInt(parts[0]) * 60;
-        seconds += parseFloat(parts[1].replace(',', '.'));
-    }
-    return seconds;
-  };
-
   return (
     <main className="container">
       <h1>Video Player</h1>
@@ -357,6 +317,7 @@ function App() {
             isDraggingSubtitle={subtitleCustomizationHook.isDraggingSubtitle}
             isSubtitleDragOver={isSubtitleDragOver}
             subtitleOffset={subtitleManagerHook.subtitleOffset}
+            isCapturingAudio={audioRecordingHook.isCapturingTimeRange}
             videoRef={videoPlayerHook.videoRef}
             videoWrapperRef={subtitleCustomizationHook.videoWrapperRef}
             subtitleRef={subtitleCustomizationHook.subtitleRef}
@@ -374,6 +335,7 @@ function App() {
             onDedicatedSubtitleDrop={handleDedicatedSubtitleDrop}
             onDedicatedSubtitleFileSelect={handleDedicatedSubtitleFileSelect}
             onOffsetChange={subtitleManagerHook.updateSubtitleOffset}
+            onCaptureAudio={audioRecordingHook.captureTimeRange}
           />
           
           <div className="video-controls">
@@ -405,6 +367,7 @@ function App() {
               isSupported={audioRecordingHook.isSupported}
               error={audioRecordingHook.error}
               bufferDuration={audioRecordingHook.bufferDuration}
+              isCapturingTimeRange={audioRecordingHook.isCapturingTimeRange}
               onStartRecording={audioRecordingHook.startRecording}
               onStopRecording={audioRecordingHook.stopRecording}
               onDownloadAudio={audioRecordingHook.downloadBufferedAudio}
