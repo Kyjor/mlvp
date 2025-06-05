@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SubtitleTrack, SubtitlePosition, AnkiNote } from '../types';
 import { SubtitleControls } from './SubtitleControls';
 import { PooledSubtitleOverlay } from './PooledSubtitleOverlay';
+import { VideoJSPlayer } from './VideoJSPlayer';
 
 interface VideoDisplayAreaProps {
   videoUrl: string | null;
@@ -19,6 +20,7 @@ interface VideoDisplayAreaProps {
   isCapturingAudio: boolean;
   blurSecondary: boolean;
   currentTime?: number;
+  initialTime?: number;
 
   videoRef: React.RefObject<HTMLVideoElement>;
   videoWrapperRef: React.RefObject<HTMLDivElement>;
@@ -42,6 +44,7 @@ interface VideoDisplayAreaProps {
   onSecondaryOffsetChange: (newOffset: number) => void;
   onCaptureAudio?: (startTime: number, endTime: number) => void;
   onToggleBlurSecondary: (enabled: boolean) => void;
+  onInitialTimeHandled?: () => void;
   captureDictionaryAudio?: (startTime: number, endTime: number, buffer: number) => Promise<string>;
   dictionaryBufferSeconds?: number;
   onOpenAnkiModal?: (note: Partial<AnkiNote>) => void;
@@ -63,6 +66,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   isCapturingAudio,
   blurSecondary,
   currentTime = 0,
+  initialTime,
   videoRef,
   videoWrapperRef,
   subtitleRef,
@@ -84,6 +88,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onSecondaryOffsetChange,
   onCaptureAudio,
   onToggleBlurSecondary,
+  onInitialTimeHandled,
   captureDictionaryAudio,
   dictionaryBufferSeconds,
   onOpenAnkiModal,
@@ -119,11 +124,6 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
         {subtitleTracks.length > 0 && (
           <p className="subtitle-info">
             📝 {subtitleTracks.length} subtitle track(s) loaded
-          </p>
-        )}
-        {!isPlaying && (
-          <p className="playback-hint">
-            📹 Click the play button or use player controls to start
           </p>
         )}
       </div>
@@ -179,20 +179,17 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
           className="video-wrapper"
           ref={videoWrapperRef} 
         >
-          <video
+          <VideoJSPlayer
             ref={videoRef}
             src={videoUrl}
-            controls
+            fileName={fileName}
             onPlay={() => onPlayPauseChange(true)}
             onPause={() => onPlayPauseChange(false)}
-            onTimeUpdate={(e) => {
-              const video = e.target as HTMLVideoElement;
-              onTimeUpdate(video.currentTime);
-            }}
+            onTimeUpdate={onTimeUpdate}
             style={{ width: '100%', height: '100%' }}
-          >
-            Your browser does not support the video tag.
-          </video>
+            initialTime={initialTime}
+            onInitialTimeHandled={onInitialTimeHandled}
+          />
           
           <PooledSubtitleOverlay
             currentTime={currentTime}

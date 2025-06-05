@@ -502,12 +502,33 @@ export const useAudioRecording = ({ videoRef, bufferDurationSeconds = 30, initia
 
   // Capture audio for dictionary lookup (returns data URL instead of downloading)
   const captureDictionaryAudio = useCallback(async (startTime: number, endTime: number, bufferSeconds?: number): Promise<string> => {
-    if (!state.isSupported || !videoRef.current) {
-      throw new Error('Audio capture not supported or no video available');
+    console.log('[useAudioRecording] captureDictionaryAudio called with:', { startTime, endTime, bufferSeconds });
+    console.log('[useAudioRecording] videoRef.current:', videoRef.current);
+    console.log('[useAudioRecording] state.isSupported:', state.isSupported);
+    
+    if (!state.isSupported) {
+      throw new Error('Audio capture not supported');
+    }
+    
+    if (!videoRef.current) {
+      console.error('[useAudioRecording] No video element available in videoRef.current');
+      throw new Error('No video available');
+    }
+
+    const video = videoRef.current;
+    console.log('[useAudioRecording] Video element:', {
+      src: video.src,
+      duration: video.duration,
+      readyState: video.readyState,
+      currentTime: video.currentTime,
+      tagName: video.tagName
+    });
+
+    if (!video.src) {
+      throw new Error('Video element has no source');
     }
 
     const effectiveBufferSeconds = bufferSeconds ?? state.dictionaryBufferSeconds;
-    const video = videoRef.current;
     const captureStart = Math.max(0, startTime - effectiveBufferSeconds);
     const captureEnd = Math.min(video.duration || endTime + effectiveBufferSeconds, endTime + effectiveBufferSeconds);
     const captureDuration = captureEnd - captureStart;

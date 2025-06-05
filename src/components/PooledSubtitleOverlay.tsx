@@ -355,14 +355,6 @@ export const PooledSubtitleOverlay: React.FC<PooledSubtitleOverlayProps> = ({
         aria-label="Subtitles display area"
         title="Ctrl+Double Click to copy. Shift+Click to look up. Ctrl+Drag to move. Alt+Drag Up/Right to resize."
       >
-        {isDraggingSubtitle && (
-          <div className="subtitle-drag-hint">
-            {(subtitleRef.current?.style.cursor === 'grabbing')
-              ? "Moving Subtitles"
-              : "Resizing Subtitles"}
-          </div>
-        )}
-        
         <div 
           className="subtitle-window"
           style={windowStyle} 

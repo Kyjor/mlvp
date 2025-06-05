@@ -90,7 +90,7 @@ export const SubtitleControls: React.FC<SubtitleControlsProps> = ({
         </div>
       </div>
       
-      {(activeSubtitle || secondarySubtitle || subtitleTracks.length > 0) && (
+      {(activeSubtitle || secondarySubtitle || subtitleTracks.length > 0) && false && (
         <>
           <div className="subtitle-customization">
             <div className="customization-header">

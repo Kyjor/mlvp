@@ -440,11 +440,20 @@ button {
 .video-js-container {
   background-color: #000;
   position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
 }
 
 .video-js {
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
+}
+
+.video-js .vjs-tech {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
 }
 
 .video-controls {
@@ -710,7 +719,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 80px;
+  min-height: 40px;
 }
 
 .subtitle-drop-zone:hover {
@@ -1515,7 +1524,6 @@ button {
   display: flex;
   gap: 20px;
   margin-bottom: 15px;
-  flex-wrap: wrap;
 }
 
 .subtitle-selector.primary-selector label {

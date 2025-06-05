@@ -27,8 +27,12 @@ export const useVideoPlayer = () => {
     }
   }, [isPlaying]);
 
-  const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) {
+  const handleTimeUpdate = useCallback((time?: number) => {
+    if (time !== undefined) {
+      // Time passed from Video.js player
+      setCurrentTime(time);
+    } else if (videoRef.current) {
+      // Fallback to reading from video element directly
       setCurrentTime(videoRef.current.currentTime);
     }
   }, []);
@@ -64,7 +68,14 @@ export const useVideoPlayer = () => {
   }, []); // No dependencies, uses refs and setters
 
   // Effect to handle seeking when videoUrl or pendingInitialTime changes
+  // NOTE: This is now handled by Video.js player, but keeping for fallback
   useLayoutEffect(() => {
+    // Skip this for Video.js - let Video.js handle the seeking
+    if (pendingInitialTime !== null) {
+      console.log("[VideoPlayer] Seek useLayoutEffect: Skipping - Video.js will handle initial time");
+      return;
+    }
+    
     const video = videoRef.current;
     if (!video || !videoUrl || typeof pendingInitialTime !== 'number') {
       console.log("[VideoPlayer] Seek useLayoutEffect: Skipping (conditions: !video:", !video, ", !videoUrl:", !videoUrl, ", typeof pendingInitialTime !== 'number':", typeof pendingInitialTime !== 'number', ", pendingInitialTime:", pendingInitialTime);
@@ -117,7 +128,14 @@ export const useVideoPlayer = () => {
   }, [videoUrl, pendingInitialTime, videoRef]); // videoRef included in case the element instance changes
 
   // Additional effect to handle case where video element becomes available after conditional rendering
+  // NOTE: This is now handled by Video.js player, but keeping for fallback
   useEffect(() => {
+    // Skip this for Video.js - let Video.js handle the seeking
+    if (pendingInitialTime !== null) {
+      console.log("[VideoPlayer] Backup seek useEffect: Skipping - Video.js will handle initial time");
+      return;
+    }
+    
     const video = videoRef.current;
     if (!video || !videoUrl || typeof pendingInitialTime !== 'number') {
       return;
@@ -196,6 +214,11 @@ export const useVideoPlayer = () => {
     };
   }, []); // Empty dependency array means run on mount/unmount
 
+  const clearPendingInitialTime = useCallback(() => {
+    console.log("[VideoPlayer] Clearing pendingInitialTime");
+    setPendingInitialTime(null);
+  }, []);
+
   return {
     videoUrl,
     setVideoUrl, 
@@ -207,10 +230,12 @@ export const useVideoPlayer = () => {
     setVideoError, 
     currentTime,
     setCurrentTime, 
+    pendingInitialTime,
     videoRef,
     togglePlayPause,
     handleTimeUpdate,
     processVideoFile,
-    resetVideoState
+    resetVideoState,
+    clearPendingInitialTime
   };
 }; 
