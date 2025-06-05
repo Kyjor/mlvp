@@ -1,11 +1,7 @@
-name: 'Build Only'
+name: 'Build Explicit'
 
 on:
-  push:
-    branches:
-      - develop
-      - feature/*
-  workflow_dispatch: # Allow manual triggering
+  workflow_dispatch: # Manual trigger for testing
 
 jobs:
   build-tauri:
@@ -21,10 +17,10 @@ jobs:
             target: 'x86_64-apple-darwin'
           - platform: 'ubuntu-22.04'
             args: ''
-            target: ''
+            target: 'release'
           - platform: 'windows-latest'
             args: ''
-            target: ''
+            target: 'release'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -50,16 +46,30 @@ jobs:
       - name: install frontend dependencies
         run: npm ci
 
-      - name: build the app
-        uses: tauri-apps/tauri-action@v0
-        with:
-          args: ${{ matrix.args }}
+      - name: build frontend
+        run: npm run build
+
+      - name: build tauri app
+        run: npm run tauri build ${{ matrix.args }}
+
+      - name: list build output (debug)
+        run: |
+          echo "=== Checking target directory structure ==="
+          ls -la src-tauri/target/ || echo "No target directory"
+          if [ -d "src-tauri/target/${{ matrix.target }}" ]; then
+            echo "=== Target-specific directory exists ==="
+            find src-tauri/target/${{ matrix.target }}/release/bundle -type f -name "*" 2>/dev/null || echo "No bundle files in target-specific path"
+          fi
+          if [ -d "src-tauri/target/release" ]; then
+            echo "=== Default release directory exists ==="
+            find src-tauri/target/release/bundle -type f -name "*" 2>/dev/null || echo "No bundle files in default path"
+          fi
 
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-build-${{ matrix.platform }}-${{ matrix.target || 'default' }}
+          name: tauri-build-${{ matrix.platform }}-${{ matrix.target }}
           path: |
             src-tauri/target/release/bundle/
             src-tauri/target/*/release/bundle/
-          if-no-files-found: warn 
+          if-no-files-found: error 

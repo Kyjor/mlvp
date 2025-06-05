@@ -1,30 +1,29 @@
-name: 'Build Only'
+name: 'Build and Release (All Platforms Required)'
 
 on:
   push:
     branches:
-      - develop
-      - feature/*
-  workflow_dispatch: # Allow manual triggering
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
 
 jobs:
   build-tauri:
     strategy:
-      fail-fast: false
+      fail-fast: true  # Stop all jobs if one fails
       matrix:
         include:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
-            target: 'aarch64-apple-darwin'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-            target: 'x86_64-apple-darwin'
           - platform: 'ubuntu-22.04'
             args: ''
-            target: ''
           - platform: 'windows-latest'
             args: ''
-            target: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -55,11 +54,31 @@ jobs:
         with:
           args: ${{ matrix.args }}
 
-      - name: upload artifacts
+      - name: upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-build-${{ matrix.platform }}-${{ matrix.target || 'default' }}
-          path: |
-            src-tauri/target/release/bundle/
-            src-tauri/target/*/release/bundle/
-          if-no-files-found: warn 
+          name: tauri-build-${{ matrix.platform }}-${{ strategy.job-index }}
+          path: src-tauri/target/release/bundle/
+
+  create-release:
+    needs: build-tauri
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: create release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}
+          name: 'MLVP v${{ github.run_number }}'
+          body: 'See the assets to download this version and install.'
+          draft: true
+          files: ./artifacts/**/* 
