@@ -268,10 +268,19 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
   const generateAnkiNote = (): Partial<AnkiNote> => {
     const note: Partial<AnkiNote> = {};
     
+    // Helper function to wrap target word with bold tags in text
+    const wrapTargetWordInText = (text: string, targetWord: string): string => {
+      if (!text || !targetWord) return text;
+      
+      // Use case-insensitive replacement with global flag
+      const regex = new RegExp(`(${targetWord})`, 'gi');
+      return text.replace(regex, '<b>$1</b>');
+    };
+    
     // Auto-populate default fields first
-    // Primary subtitle -> Sentence
+    // Primary subtitle -> Sentence (with target word bolded)
     if (sourceText) {
-      note.sentence = sourceText;
+      note.sentence = wrapTargetWordInText(sourceText, word);
     }
     
     // Secondary subtitle -> Translation
@@ -314,7 +323,8 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
       let content = '';
       switch (contentKey) {
         case 'sourceText':
-          content = sourceText || '';
+          // Also apply bold wrapping for manual mappings to sentence field
+          content = field === 'sentence' ? wrapTargetWordInText(sourceText || '', word) : (sourceText || '');
           break;
         case 'secondarySourceText':
           content = secondarySourceText || '';

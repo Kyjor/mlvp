@@ -67,6 +67,10 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
               "Translation": note.translation,
               "Target Word": note.targetWord,
               "Definitions": note.definitions
+            },
+            "options": {
+                "allowDuplicate": true,
+                "duplicateScope": "deck"
             }
           }
         }
@@ -90,12 +94,42 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
       if (result.error) {
         setSubmitResult(`Error: ${result.error}`);
       } else {
-        setSubmitResult('Note added successfully!');
-        // Auto-close after success
+        setSubmitResult('Note added successfully! Syncing...');
+        
+        // Auto-sync after successful note addition
+        try {
+          const syncResponse = await fetch(localApiBaseUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: "sync",
+              version: 6
+            })
+          });
+
+          if (syncResponse.ok) {
+            const syncResult = await syncResponse.json();
+            if (syncResult.error) {
+              setSubmitResult('Note added successfully! Sync failed: ' + syncResult.error);
+            } else {
+              setSubmitResult('Note added and synced successfully!');
+            }
+          } else {
+            setSubmitResult('Note added successfully! Sync failed: HTTP error');
+          }
+        } catch (syncError) {
+          // Sync failed, but note was added successfully
+          setSubmitResult('Note added successfully! Sync failed: ' + (syncError instanceof Error ? syncError.message : 'Unknown sync error'));
+        }
+        
+        // Auto-close after success (with slight delay for sync)
         setTimeout(() => {
           onClose();
           setSubmitResult('');
-        }, 1500);
+        }, 2000);
       }
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
