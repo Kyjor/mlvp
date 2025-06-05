@@ -321,6 +321,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
             captureDictionaryAudio={captureDictionaryAudio}
             dictionaryBufferSeconds={dictionaryBufferSeconds}
             onOpenAnkiModal={onOpenAnkiModal}
+            subtitleData={subtitleData}
           />
         </div>
       </div>

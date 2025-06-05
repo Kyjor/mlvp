@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AnkiNote } from '../types';
+import { AnkiNote, SubtitleCue } from '../types';
 
 interface JMDictEntry {
   id: number;
@@ -35,6 +35,9 @@ export interface DictionaryModalProps {
   error?: string;
   sourceText?: string;
   secondarySourceText?: string;
+  secondarySubtitleCues?: SubtitleCue[]; // Array of all secondary subtitle cues
+  currentTime?: number; // Current video time to find initial secondary subtitle
+  secondarySubtitleOffset?: number; // Offset for secondary subtitles
   screenshot?: string; // Base64 data URL
   audioData?: string; // Base64 data URL for audio
   // Anki integration props
@@ -50,6 +53,9 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
   error, 
   sourceText, 
   secondarySourceText, 
+  secondarySubtitleCues,
+  currentTime,
+  secondarySubtitleOffset = 0,
   screenshot, 
   audioData,
   onOpenAnkiModal
@@ -62,6 +68,70 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
   const [wordTranslation, setWordTranslation] = useState<string>('');
   const [isTranslatingSentence, setIsTranslatingSentence] = useState(false);
   const [isTranslatingWord, setIsTranslatingWord] = useState(false);
+
+  // Secondary subtitle navigation state
+  const [selectedSecondaryIndex, setSelectedSecondaryIndex] = useState<number | null>(null);
+
+  // Find the current secondary subtitle index based on current time
+  const getCurrentSecondaryIndex = (): number => {
+    if (!secondarySubtitleCues || !currentTime) return -1;
+    
+    const adjustedTime = currentTime + secondarySubtitleOffset;
+    for (let i = 0; i < secondarySubtitleCues.length; i++) {
+      if (adjustedTime >= secondarySubtitleCues[i].startTime && adjustedTime <= secondarySubtitleCues[i].endTime) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  // Initialize selected index on first render
+  React.useEffect(() => {
+    if (selectedSecondaryIndex === null && secondarySubtitleCues) {
+      const currentIndex = getCurrentSecondaryIndex();
+      setSelectedSecondaryIndex(currentIndex >= 0 ? currentIndex : 0);
+    }
+  }, [secondarySubtitleCues, currentTime]);
+
+  // Reset selected index when modal opens or secondary cues change
+  React.useEffect(() => {
+    if (open && secondarySubtitleCues) {
+      const currentIndex = getCurrentSecondaryIndex();
+      setSelectedSecondaryIndex(currentIndex >= 0 ? currentIndex : 0);
+    }
+  }, [open, secondarySubtitleCues]);
+
+  // Get the currently selected secondary subtitle text
+  const getSelectedSecondaryText = (): string => {
+    if (!secondarySubtitleCues || selectedSecondaryIndex === null || selectedSecondaryIndex < 0) {
+      return secondarySourceText || '';
+    }
+    
+    if (selectedSecondaryIndex >= secondarySubtitleCues.length) {
+      return secondarySourceText || '';
+    }
+    
+    return secondarySubtitleCues[selectedSecondaryIndex].text;
+  };
+
+  // Navigate to previous secondary subtitle
+  const navigateToPreviousSecondary = () => {
+    if (!secondarySubtitleCues || selectedSecondaryIndex === null) return;
+    
+    const newIndex = Math.max(0, selectedSecondaryIndex - 1);
+    setSelectedSecondaryIndex(newIndex);
+  };
+
+  // Navigate to next secondary subtitle
+  const navigateToNextSecondary = () => {
+    if (!secondarySubtitleCues || selectedSecondaryIndex === null) return;
+    
+    const newIndex = Math.min(secondarySubtitleCues.length - 1, selectedSecondaryIndex + 1);
+    setSelectedSecondaryIndex(newIndex);
+  };
+
+  // Get the display text for the selected secondary subtitle
+  const selectedSecondaryText = getSelectedSecondaryText();
 
   if (!open) return null;
   
@@ -311,9 +381,9 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
       note.sentence = wrapTargetWordInText(sourceText, word);
     }
     
-    // Secondary subtitle -> Translation
-    if (secondarySourceText) {
-      note.translation = secondarySourceText;
+    // Secondary subtitle -> Translation (use selected secondary text)
+    if (selectedSecondaryText) {
+      note.translation = selectedSecondaryText;
     }
     
     // Target word -> First dictionary entry as "[Reading] [Kanji]"
@@ -355,7 +425,7 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
           content = field === 'sentence' ? wrapTargetWordInText(sourceText || '', word) : (sourceText || '');
           break;
         case 'secondarySourceText':
-          content = secondarySourceText || '';
+          content = selectedSecondaryText || '';
           break;
         case 'word':
           content = word;
@@ -545,7 +615,7 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
         )}
 
         {/* Secondary subtitle sentence */}
-        {secondarySourceText && (
+        {(selectedSecondaryText || secondarySourceText) && (
           <div style={{
             marginBottom: '16px',
             padding: '12px',
@@ -553,16 +623,62 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
             borderRadius: '6px',
             borderLeft: '4px solid #4a90e2'
           }}>
-            <div style={{fontSize: '14px', color: '#666', marginBottom: '4px'}}>
-              Secondary subtitle:
-              <AnkiFieldDropdown 
-                contentKey="secondarySourceText" 
-                onCopy={() => copyToClipboard(secondarySourceText)} 
-                content={secondarySourceText}
-              />
+            <div style={{fontSize: '14px', color: '#666', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+              <span>
+                Secondary subtitle:
+                <AnkiFieldDropdown 
+                  contentKey="secondarySourceText" 
+                  onCopy={() => copyToClipboard(selectedSecondaryText)} 
+                  content={selectedSecondaryText}
+                />
+              </span>
+              {/* Navigation arrows for secondary subtitles */}
+              {secondarySubtitleCues && secondarySubtitleCues.length > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <button
+                    style={{
+                      ...copyButtonStyle,
+                      backgroundColor: '#e3f2fd',
+                      color: '#1976d2',
+                      border: '1px solid #1976d2',
+                      padding: '4px 8px'
+                    }}
+                    onClick={navigateToPreviousSecondary}
+                    disabled={selectedSecondaryIndex === null || selectedSecondaryIndex <= 0}
+                    title="Previous secondary subtitle"
+                  >
+                    ←
+                  </button>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    color: '#666', 
+                    minWidth: '60px', 
+                    textAlign: 'center' 
+                  }}>
+                    {selectedSecondaryIndex !== null && secondarySubtitleCues ? 
+                      `${selectedSecondaryIndex + 1}/${secondarySubtitleCues.length}` : 
+                      '1/1'
+                    }
+                  </span>
+                  <button
+                    style={{
+                      ...copyButtonStyle,
+                      backgroundColor: '#e3f2fd',
+                      color: '#1976d2',
+                      border: '1px solid #1976d2',
+                      padding: '4px 8px'
+                    }}
+                    onClick={navigateToNextSecondary}
+                    disabled={selectedSecondaryIndex === null || !secondarySubtitleCues || selectedSecondaryIndex >= secondarySubtitleCues.length - 1}
+                    title="Next secondary subtitle"
+                  >
+                    →
+                  </button>
+                </div>
+              )}
             </div>
             <div style={{fontSize: '16px', lineHeight: '1.4'}}>
-              {highlightWordInText(secondarySourceText, word)}
+              {highlightWordInText(selectedSecondaryText, word)}
             </div>
           </div>
         )}
