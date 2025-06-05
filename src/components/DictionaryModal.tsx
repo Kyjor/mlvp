@@ -56,6 +56,12 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
 }) => {
   // Field mapping state
   const [fieldMappings, setFieldMappings] = useState<Record<string, keyof AnkiNote>>({});
+  
+  // Translation state
+  const [sentenceTranslation, setSentenceTranslation] = useState<string>('');
+  const [wordTranslation, setWordTranslation] = useState<string>('');
+  const [isTranslatingSentence, setIsTranslatingSentence] = useState(false);
+  const [isTranslatingWord, setIsTranslatingWord] = useState(false);
 
   if (!open) return null;
   
@@ -66,6 +72,28 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
       // Could add a toast notification here
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  // Translation function using MyMemory API
+  const translateText = async (text: string, setTranslation: (translation: string) => void, setLoading: (loading: boolean) => void) => {
+    if (!text.trim()) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ja|en`);
+      const data = await response.json();
+      
+      if (data.responseStatus === 200 && data.responseData) {
+        setTranslation(data.responseData.translatedText);
+      } else {
+        setTranslation('Translation failed');
+      }
+    } catch (err) {
+      console.error('Translation error:', err);
+      setTranslation('Translation error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -467,17 +495,52 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
             borderRadius: '6px',
             borderLeft: '4px solid #0066cc'
           }}>
-            <div style={{fontSize: '14px', color: '#666', marginBottom: '4px'}}>
-              Primary subtitle:
-              <AnkiFieldDropdown 
-                contentKey="sourceText" 
-                onCopy={() => copyToClipboard(sourceText)} 
-                content={sourceText}
-              />
+            <div style={{fontSize: '14px', color: '#666', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+              <span>
+                Primary subtitle:
+                <AnkiFieldDropdown 
+                  contentKey="sourceText" 
+                  onCopy={() => copyToClipboard(sourceText)} 
+                  content={sourceText}
+                />
+              </span>
+              <button
+                style={{
+                  ...copyButtonStyle,
+                  backgroundColor: '#e3f2fd',
+                  color: '#1976d2',
+                  border: '1px solid #1976d2'
+                }}
+                onClick={() => translateText(sourceText, setSentenceTranslation, setIsTranslatingSentence)}
+                disabled={isTranslatingSentence}
+                title="Translate sentence"
+              >
+                {isTranslatingSentence ? '⏳' : '🌐'} Translate
+              </button>
             </div>
-            <div style={{fontSize: '16px', lineHeight: '1.4'}}>
+            <div style={{fontSize: '16px', lineHeight: '1.4', marginBottom: sentenceTranslation ? '8px' : '0'}}>
               {highlightWordInText(sourceText, word)}
             </div>
+            {sentenceTranslation && (
+              <div style={{
+                fontSize: '14px',
+                color: '#555',
+                fontStyle: 'italic',
+                backgroundColor: '#e8f5e8',
+                padding: '6px 8px',
+                borderRadius: '4px',
+                marginTop: '8px'
+              }}>
+                Translation: {sentenceTranslation}
+                <button 
+                  style={{...copyButtonStyle, marginLeft: '8px'}}
+                  onClick={() => copyToClipboard(sentenceTranslation)}
+                  title="Copy translation"
+                >
+                  📋
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -501,6 +564,54 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
             <div style={{fontSize: '16px', lineHeight: '1.4'}}>
               {highlightWordInText(secondarySourceText, word)}
             </div>
+          </div>
+        )}
+
+        {/* Target word translation section */}
+        {word && (
+          <div style={{
+            marginBottom: '16px',
+            padding: '12px',
+            backgroundColor: '#fff3e0',
+            borderRadius: '6px',
+            borderLeft: '4px solid #ff9800'
+          }}>
+            <div style={{fontSize: '14px', color: '#666', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+              <span>Target word: <strong style={{fontSize: '16px', color: '#333'}}>{word}</strong></span>
+              <button
+                style={{
+                  ...copyButtonStyle,
+                  backgroundColor: '#e3f2fd',
+                  color: '#1976d2',
+                  border: '1px solid #1976d2'
+                }}
+                onClick={() => translateText(word, setWordTranslation, setIsTranslatingWord)}
+                disabled={isTranslatingWord}
+                title="Translate word"
+              >
+                {isTranslatingWord ? '⏳' : '🌐'} Translate
+              </button>
+            </div>
+            {wordTranslation && (
+              <div style={{
+                fontSize: '14px',
+                color: '#555',
+                fontStyle: 'italic',
+                backgroundColor: '#e8f5e8',
+                padding: '6px 8px',
+                borderRadius: '4px',
+                marginTop: '8px'
+              }}>
+                Translation: {wordTranslation}
+                <button 
+                  style={{...copyButtonStyle, marginLeft: '8px'}}
+                  onClick={() => copyToClipboard(wordTranslation)}
+                  title="Copy translation"
+                >
+                  📋
+                </button>
+              </div>
+            )}
           </div>
         )}
         
