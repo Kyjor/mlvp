@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnkiNote } from '../types';
 
 interface AnkiModalProps {
@@ -29,6 +29,16 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
   const [localDeckName, setLocalDeckName] = useState(deckName);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<string>('');
+
+  // Reset note fields when initialNote changes (when modal opens with new data)
+  useEffect(() => {
+    setNote({
+      sentence: initialNote.sentence || '',
+      translation: initialNote.translation || '',
+      targetWord: initialNote.targetWord || '',
+      definitions: initialNote.definitions || ''
+    });
+  }, [initialNote]);
 
   if (!open) return null;
 

@@ -268,6 +268,48 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
   const generateAnkiNote = (): Partial<AnkiNote> => {
     const note: Partial<AnkiNote> = {};
     
+    // Auto-populate default fields first
+    // Primary subtitle -> Sentence
+    if (sourceText) {
+      note.sentence = sourceText;
+    }
+    
+    // Secondary subtitle -> Translation
+    if (secondarySourceText) {
+      note.translation = secondarySourceText;
+    }
+    
+    // Target word -> First dictionary entry as "[Reading] [Kanji]"
+    if (results.length > 0) {
+      const entry = results[0];
+      const reading = entry.kana[0]?.text || '';
+      const kanji = entry.kanji?.[0]?.text || '';
+      
+      if (reading && kanji) {
+        note.targetWord = `[${reading}] [${kanji}]`;
+      } else if (reading) {
+        note.targetWord = `[${reading}]`;
+      } else if (kanji) {
+        note.targetWord = `[${kanji}]`;
+      }
+    }
+    
+    // Definition -> First dictionary definition
+    if (results.length > 0) {
+      const entry = results[0];
+      const englishSenses = entry.sense.filter(sense => 
+        sense.gloss.some(g => g.lang === 'eng' || !g.lang)
+      );
+      if (englishSenses.length > 0) {
+        const firstSense = englishSenses[0];
+        note.definitions = firstSense.gloss
+          .filter(g => g.lang === 'eng' || !g.lang)
+          .map(gloss => gloss.text)
+          .join(', ');
+      }
+    }
+    
+    // Then apply any manual field mappings (this will override defaults if user has mapped fields)
     Object.entries(fieldMappings).forEach(([contentKey, field]) => {
       let content = '';
       switch (contentKey) {
@@ -319,7 +361,7 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
         <button style={closeButtonStyle} onClick={onClose}>×</button>
         
         {/* Add to Anki button */}
-        {onOpenAnkiModal && Object.keys(fieldMappings).length > 0 && (
+        {onOpenAnkiModal && (
           <div style={{ marginBottom: '12px', textAlign: 'right' }}>
             <button
               style={{
