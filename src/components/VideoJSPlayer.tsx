@@ -55,6 +55,10 @@ export const VideoJSPlayer = forwardRef<HTMLVideoElement, VideoJSPlayerProps>(({
           console.log('[VideoJSPlayer] Forwarding video element:', videoElement);
           console.log('[VideoJSPlayer] Video element src:', videoElement.src);
           console.log('[VideoJSPlayer] Video element ready state:', videoElement.readyState);
+          
+          // Attach the Video.js player instance to the video element for seeking
+          (videoElement as any).player = playerRef.current;
+          
           return videoElement;
         } else {
           console.log('[VideoJSPlayer] Video element not found in player');

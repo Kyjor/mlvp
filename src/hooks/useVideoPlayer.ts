@@ -219,6 +219,31 @@ export const useVideoPlayer = () => {
     setPendingInitialTime(null);
   }, []);
 
+  // Seek to a specific time - works with Video.js player
+  const seekToTime = useCallback((time: number) => {
+    console.log(`[VideoPlayer] seekToTime called: ${time}s`);
+    
+    // For Video.js, we need to access the player instance through the video element
+    // The VideoJSPlayer component handles the actual Video.js instance
+    if (videoRef.current) {
+      // Check if this is a Video.js player
+      const videoElement = videoRef.current;
+      if ((videoElement as any).player) {
+        // This is a Video.js player
+        const player = (videoElement as any).player;
+        console.log(`[VideoPlayer] Seeking Video.js player to ${time}s`);
+        player.currentTime(time);
+      } else if (videoElement.currentTime !== undefined) {
+        // Fallback for regular HTML5 video
+        console.log(`[VideoPlayer] Seeking HTML5 video to ${time}s`);
+        videoElement.currentTime = time;
+      }
+      
+      // Update our state immediately for UI responsiveness
+      setCurrentTime(time);
+    }
+  }, []);
+
   return {
     videoUrl,
     setVideoUrl, 
@@ -236,6 +261,7 @@ export const useVideoPlayer = () => {
     handleTimeUpdate,
     processVideoFile,
     resetVideoState,
-    clearPendingInitialTime
+    clearPendingInitialTime,
+    seekToTime
   };
 }; 

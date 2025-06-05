@@ -490,6 +490,16 @@ button {
   background-color: #c82333;
 }
 
+/* Keyboard navigation hint styling */
+.navigation-hint {
+  font-size: 0.85em;
+  color: #666;
+  font-style: italic;
+  margin-left: 15px;
+  display: flex;
+  align-items: center;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;
@@ -587,6 +597,10 @@ button {
 
   .error-help {
     color: #ccc !important;
+  }
+  
+  .navigation-hint {
+    color: #aaa !important;
   }
 }
 

@@ -403,6 +403,7 @@ function App() {
             blurSecondary={blurSecondarySubtitle}
             currentTime={videoPlayerHook.currentTime}
             initialTime={videoPlayerHook.pendingInitialTime || undefined}
+            subtitleData={subtitleManagerHook.subtitleData}
             videoRef={videoPlayerHook.videoRef}
             videoWrapperRef={subtitleCustomizationHook.videoWrapperRef}
             subtitleRef={subtitleCustomizationHook.subtitleRef}
@@ -425,6 +426,7 @@ function App() {
             onCaptureAudio={audioRecordingHook.captureTimeRange}
             onToggleBlurSecondary={setBlurSecondarySubtitle}
             onInitialTimeHandled={videoPlayerHook.clearPendingInitialTime}
+            onSeek={videoPlayerHook.seekToTime}
             captureDictionaryAudio={audioRecordingHook.captureDictionaryAudio}
             dictionaryBufferSeconds={audioRecordingHook.dictionaryBufferSeconds}
             onOpenAnkiModal={handleOpenAnkiModal}
