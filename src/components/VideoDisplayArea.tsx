@@ -7,7 +7,7 @@ import { VideoJSPlayer } from './VideoJSPlayer';
 interface VideoDisplayAreaProps {
   videoUrl: string | null;
   fileName: string;
-  isPlaying: boolean;
+  isYouTube?: boolean;
   subtitleTracks: SubtitleTrack[];
   activeSubtitle: string | null;
   secondarySubtitle: string | null;
@@ -55,7 +55,7 @@ interface VideoDisplayAreaProps {
 export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   videoUrl,
   fileName,
-  isPlaying,
+  isYouTube = false,
   subtitleTracks,
   activeSubtitle,
   secondarySubtitle,
@@ -294,6 +294,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
             ref={videoRef}
             src={videoUrl}
             fileName={fileName}
+            isYouTube={isYouTube}
             onPlay={() => onPlayPauseChange(true)}
             onPause={() => onPlayPauseChange(false)}
             onTimeUpdate={onTimeUpdate}

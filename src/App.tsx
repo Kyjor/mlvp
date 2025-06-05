@@ -55,7 +55,6 @@ function App() {
   const [initialSecondarySubtitleId, setInitialSecondarySubtitleId] = useState<string | null | undefined>(undefined);
   const [initialSubtitleSettings, setInitialSubtitleSettings] = useState<CachedPlayerData['subtitleSettings'] | undefined>(undefined);
   const [initialAudioSettings, setInitialAudioSettings] = useState<CachedPlayerData['audioSettings'] | undefined>(undefined);
-  const [initialAnkiSettings, setInitialAnkiSettings] = useState<CachedPlayerData['ankiSettings'] | undefined>(undefined);
 
   const videoPlayerHook = useVideoPlayer();
   const subtitleCustomizationHook = useSubtitleCustomization({
@@ -93,7 +92,6 @@ function App() {
       setInitialSecondarySubtitleId(cachedData.secondarySubtitleId);
       setInitialSubtitleSettings(cachedData.subtitleSettings); 
       setInitialAudioSettings(cachedData.audioSettings);
-      setInitialAnkiSettings(cachedData.ankiSettings);
       setBlurSecondarySubtitle(!!cachedData.subtitleSettings.blurSecondary);
       
       subtitleCustomizationHook.setSubtitlePosition(cachedData.subtitleSettings.position);
@@ -214,10 +212,10 @@ function App() {
     if (videoFile) {
       if (isInitialLoadWithCache && cachedVideoFileIdentifier && videoFile.name === cachedVideoFileIdentifier) {
         setLoadingMessage(`Restoring video ${videoFile.name}...`);
-        await videoPlayerHook.processVideoFile(videoFile, seekTime ?? cachedSeekTime ?? 0);
+        await videoPlayerHook.processVideo(videoFile, seekTime ?? cachedSeekTime ?? 0);
       } else {
         setLoadingMessage("Loading video...");
-        await videoPlayerHook.processVideoFile(videoFile); 
+        await videoPlayerHook.processVideo(videoFile); 
       }
       setCachedVideoFileIdentifier(null);
       setCachedSeekTime(null);
@@ -226,6 +224,23 @@ function App() {
       setLoadingMessage("Processing subtitles...");
       await subtitleManagerHook.addSubtitleFiles(subtitleFiles);
     }
+    setIsLoading(false);
+    setLoadingMessage("");
+  };
+
+  const handleUrlProcessing = async (url: string) => {
+    setIsLoading(true);
+    setLoadingMessage("Loading YouTube video...");
+    
+    try {
+      await videoPlayerHook.processVideo(url);
+      setCachedVideoFileIdentifier(null);
+      setCachedSeekTime(null);
+    } catch (error) {
+      console.error("Failed to process URL:", error);
+      // The error will be handled by the videoPlayerHook
+    }
+    
     setIsLoading(false);
     setLoadingMessage("");
   };
@@ -380,6 +395,7 @@ function App() {
           }}
           fileInputRef={fileInputRef}
           onFileSelect={handleMainFileSelect}
+          onUrlSubmit={handleUrlProcessing}
           customMessage={cachedVideoFileIdentifier ? `Please re-select: ${cachedVideoFileIdentifier} to restore your previous session.` : undefined}
         />
       )}
@@ -389,7 +405,7 @@ function App() {
           <VideoDisplayArea 
             videoUrl={videoPlayerHook.videoUrl}
             fileName={videoPlayerHook.fileName}
-            isPlaying={videoPlayerHook.isPlaying}
+            isYouTube={videoPlayerHook.isYouTube}
             subtitleTracks={subtitleManagerHook.subtitleTracks}
             activeSubtitle={subtitleManagerHook.activeSubtitle}
             secondarySubtitle={subtitleManagerHook.secondarySubtitle}

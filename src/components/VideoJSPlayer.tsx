@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
+import 'videojs-youtube';
 
 interface VideoJSPlayerProps {
   src: string;
   fileName?: string;
+  isYouTube?: boolean;
   initialTime?: number;
   onPlay?: () => void;
   onPause?: () => void;
@@ -12,13 +14,13 @@ interface VideoJSPlayerProps {
   onLoadedMetadata?: () => void;
   onSeeked?: () => void;
   onInitialTimeHandled?: () => void;
-  className?: string;
   style?: React.CSSProperties;
 }
 
 export const VideoJSPlayer = forwardRef<HTMLVideoElement, VideoJSPlayerProps>(({
   src,
   fileName,
+  isYouTube = false,
   initialTime,
   onPlay,
   onPause,
@@ -26,7 +28,6 @@ export const VideoJSPlayer = forwardRef<HTMLVideoElement, VideoJSPlayerProps>(({
   onLoadedMetadata,
   onSeeked,
   onInitialTimeHandled,
-  className,
   style
 }, ref) => {
   const videoRef = useRef<HTMLDivElement>(null);
@@ -34,6 +35,11 @@ export const VideoJSPlayer = forwardRef<HTMLVideoElement, VideoJSPlayerProps>(({
 
   // Helper function to determine video type
   const getVideoType = (videoSrc: string, fileName?: string): string => {
+    // If it's a YouTube video, return the YouTube type
+    if (isYouTube) {
+      return 'video/youtube';
+    }
+    
     const sourceToCheck = fileName || videoSrc;
     
     if (sourceToCheck.includes('.mp4') || sourceToCheck.includes('mp4')) return 'video/mp4';
@@ -93,7 +99,7 @@ export const VideoJSPlayer = forwardRef<HTMLVideoElement, VideoJSPlayerProps>(({
 
       const videoType = getVideoType(src, fileName);
       
-      const options = {
+      const options: any = {
         controls: true,
         responsive: true,
         fluid: true,
@@ -107,9 +113,29 @@ export const VideoJSPlayer = forwardRef<HTMLVideoElement, VideoJSPlayerProps>(({
         }]
       };
 
+      // Add YouTube-specific options if this is a YouTube video
+      if (isYouTube) {
+        options.techOrder = ['youtube'];
+        options.youtube = {
+          // Use Video.js controls instead of YouTube controls for consistency
+          ytControls: 0,
+          // Other YouTube player parameters
+          iv_load_policy: 3, // Hide annotations
+          modestbranding: 1, // Modest branding
+          rel: 0, // Don't show related videos
+          showinfo: 0, // Don't show video info
+          // Enable JavaScript API
+          enablejsapi: 1,
+          // Allow seeking to any point
+          disablekb: 0,
+          // Start time if provided
+          start: initialTime ? Math.floor(initialTime) : 0
+        };
+      }
+
       const player = playerRef.current = videojs(videoElement, options, () => {
         console.log('[VideoJSPlayer] Player is ready');
-        
+
         // Handle initial time seeking if provided
         if (initialTime && initialTime > 0) {
           console.log(`[VideoJSPlayer] Seeking to initial time: ${initialTime}`);
@@ -200,8 +226,8 @@ export const VideoJSPlayer = forwardRef<HTMLVideoElement, VideoJSPlayerProps>(({
         type: videoType
       }]);
     }
-  }, [src, fileName]);
-
+  }, [src, fileName, isYouTube]);
+      
   // Dispose the Video.js player when the component unmounts
   useEffect(() => {
     const player = playerRef.current;
@@ -220,7 +246,7 @@ export const VideoJSPlayer = forwardRef<HTMLVideoElement, VideoJSPlayerProps>(({
       data-vjs-player
       className="video-js-container"
       style={{ 
-        width: '100%',
+        width: '100%', 
         height: 'auto',
         aspectRatio: '16/9',
         backgroundColor: '#000',

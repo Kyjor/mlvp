@@ -1,22 +1,41 @@
-// Video file extensions that we want to support
-const supportedVideoExtensions = [
-  '.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.m4v', '.3gp', '.flv', '.wmv'
-];
-
-// Subtitle file extensions
-const supportedSubtitleExtensions = [
-  '.srt', '.vtt', '.ass', '.ssa', '.sub'
-];
-
 export const isVideoFile = (file: File): boolean => {
-  if (file.type.startsWith('video/')) {
-    return true;
-  }
-  const fileName = file.name.toLowerCase();
-  return supportedVideoExtensions.some(ext => fileName.endsWith(ext));
+  const videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.webm', '.ogg', '.m4v', '.flv', '.wmv'];
+  return videoExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
 };
 
 export const isSubtitleFile = (file: File): boolean => {
-  const fileName = file.name.toLowerCase();
-  return supportedSubtitleExtensions.some(ext => fileName.endsWith(ext));
+  const subtitleExtensions = ['.srt', '.vtt', '.ass', '.ssa', '.sub'];
+  return subtitleExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+};
+
+// YouTube URL detection and processing
+export const isYouTubeUrl = (url: string): boolean => {
+  const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/i;
+  return youtubeRegex.test(url);
+};
+
+export const extractYouTubeVideoId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
+    /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  
+  return null;
+};
+
+export const getYouTubeVideoTitle = async (videoId: string): Promise<string> => {
+  try {
+    // For now, return a simple title. In a real app, you might want to use the YouTube API
+    return `YouTube Video: ${videoId}`;
+  } catch (error) {
+    console.error('Failed to get YouTube video title:', error);
+    return `YouTube Video: ${videoId}`;
+  }
 }; 

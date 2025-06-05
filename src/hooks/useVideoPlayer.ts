@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
+import { isYouTubeUrl, extractYouTubeVideoId, getYouTubeVideoTitle } from '../utils/fileUtils';
 
 export const useVideoPlayer = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -6,6 +7,8 @@ export const useVideoPlayer = () => {
   const [fileName, setFileName] = useState<string>("");
   const [videoError, setVideoError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [isYouTube, setIsYouTube] = useState(false);
+  const [youTubeVideoId, setYouTubeVideoId] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // State to manage the initial time we want to seek to
@@ -40,6 +43,9 @@ export const useVideoPlayer = () => {
   const processVideoFile = useCallback(async (file: File, initialTime?: number) => {
     console.log(`[VideoPlayer] processVideoFile called. File: ${file.name}, initialTime: ${initialTime}`);
     setVideoError(null);
+    setIsYouTube(false);
+    setYouTubeVideoId(null);
+    
     try {
       // Revoke previous object URL if it exists
       if (videoUrlObjectRef.current) {
@@ -66,6 +72,68 @@ export const useVideoPlayer = () => {
       setVideoError("Failed to load video file.");
     }
   }, []); // No dependencies, uses refs and setters
+
+  const processVideo = useCallback(async (source: File | string, initialTime?: number) => {
+    console.log(`[VideoPlayer] processVideo called. Source:`, source, `initialTime: ${initialTime}`);
+    setVideoError(null);
+    
+    try {
+      if (source instanceof File) {
+        // Handle file upload
+        setIsYouTube(false);
+        setYouTubeVideoId(null);
+        
+        // Revoke previous object URL if it exists
+        if (videoUrlObjectRef.current) {
+          URL.revokeObjectURL(videoUrlObjectRef.current);
+          console.log("[VideoPlayer] Revoked old object URL:", videoUrlObjectRef.current);
+        }
+
+        const newUrl = URL.createObjectURL(source);
+        videoUrlObjectRef.current = newUrl; // Store new URL for future revocation
+        console.log("[VideoPlayer] Created new object URL:", newUrl);
+
+        setVideoUrl(newUrl);
+        setFileName(source.name);
+      } else {
+        // Handle URL (YouTube)
+        if (!isYouTubeUrl(source)) {
+          throw new Error("Unsupported URL format. Please use a YouTube URL.");
+        }
+
+        const videoId = extractYouTubeVideoId(source);
+        if (!videoId) {
+          throw new Error("Invalid YouTube URL");
+        }
+
+        // Revoke previous object URL if it exists
+        if (videoUrlObjectRef.current) {
+          URL.revokeObjectURL(videoUrlObjectRef.current);
+          console.log("[VideoPlayer] Revoked old object URL:", videoUrlObjectRef.current);
+          videoUrlObjectRef.current = null;
+        }
+
+        const title = await getYouTubeVideoTitle(videoId);
+        
+        setVideoUrl(source); // Use the original YouTube URL
+        setFileName(title);
+        setIsYouTube(true);
+        setYouTubeVideoId(videoId);
+      }
+      
+      setIsPlaying(false);
+      // Set currentTime state immediately for UI responsiveness
+      setCurrentTime(initialTime ?? 0); 
+      console.log(`[VideoPlayer] Set React currentTime state to: ${initialTime ?? 0}`);
+      // Signal the useEffect to act with the initialTime
+      setPendingInitialTime(initialTime ?? null); 
+      console.log(`[VideoPlayer] Set pendingInitialTime to: ${initialTime ?? null}`);
+
+    } catch (error) {
+      console.error("[VideoPlayer] Failed to process video:", error);
+      setVideoError(error instanceof Error ? error.message : "Failed to load video.");
+    }
+  }, []);
 
   // Effect to handle seeking when videoUrl or pendingInitialTime changes
   // NOTE: This is now handled by Video.js player, but keeping for fallback
@@ -195,6 +263,8 @@ export const useVideoPlayer = () => {
     setIsPlaying(false);
     setVideoError(null);
     setCurrentTime(0);
+    setIsYouTube(false);
+    setYouTubeVideoId(null);
     setPendingInitialTime(null); // Also reset pending time
     if (videoRef.current) {
       videoRef.current.src = ""; 
@@ -256,10 +326,13 @@ export const useVideoPlayer = () => {
     currentTime,
     setCurrentTime, 
     pendingInitialTime,
+    isYouTube,
+    youTubeVideoId,
     videoRef,
     togglePlayPause,
     handleTimeUpdate,
     processVideoFile,
+    processVideo,
     resetVideoState,
     clearPendingInitialTime,
     seekToTime

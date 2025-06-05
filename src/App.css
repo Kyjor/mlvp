@@ -445,6 +445,22 @@ button {
   max-width: 100%;
 }
 
+.youtube-player-container {
+  background-color: #000;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
+}
+
+.youtube-player-container iframe {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 .video-js {
   width: 100% !important;
   height: 100% !important;
