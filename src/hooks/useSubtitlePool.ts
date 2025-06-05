@@ -54,17 +54,9 @@ export const useSubtitlePool = () => {
       subtitleSegment.className = 'subtitle-segment';
       subtitleSegment.innerHTML = cue.text;
       
-      // Create capture button
-      const captureBtn = document.createElement('button');
-      captureBtn.className = 'subtitle-capture-btn';
-      captureBtn.innerHTML = '🎤';
-      captureBtn.title = `Capture audio for this line (${cue.startTime.toFixed(1)}s - ${cue.endTime.toFixed(1)}s ± 2s)`;
-      captureBtn.setAttribute('aria-label', 'Capture audio for this subtitle line');
-      
       // Assemble elements
       subtitleLine.appendChild(subtitleSegment);
       cueContainer.appendChild(subtitleLine);
-      cueContainer.appendChild(captureBtn);
       
       // Add to container
       container.appendChild(cueContainer);
@@ -95,16 +87,7 @@ export const useSubtitlePool = () => {
         // Show subtitle
         element.style.display = 'flex';
         subtitleElement.isVisible = true;
-        
-        // Update capture button handler
-        const captureBtn = element.querySelector('.subtitle-capture-btn') as HTMLButtonElement;
-        if (captureBtn && onCaptureAudio) {
-          captureBtn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onCaptureAudio(cue.startTime, cue.endTime);
-          };
-        }
+      
       } else if (!shouldBeVisible && subtitleElement.isVisible) {
         // Hide subtitle
         element.style.display = 'none';

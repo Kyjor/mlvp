@@ -90,15 +90,12 @@ export const SubtitlePoolProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       // Create capture button
       const captureBtn = document.createElement('button');
-      captureBtn.className = 'subtitle-capture-btn';
-      captureBtn.innerHTML = '🎤';
       captureBtn.title = `Capture audio for this line (${cue.startTime.toFixed(1)}s - ${cue.endTime.toFixed(1)}s ± 2s)`;
       captureBtn.setAttribute('aria-label', 'Capture audio for this subtitle line');
       
       // Assemble elements
       subtitleLine.appendChild(subtitleSegment);
       cueContainer.appendChild(subtitleLine);
-      cueContainer.appendChild(captureBtn);
       
       // Add to container
       container.appendChild(cueContainer);
