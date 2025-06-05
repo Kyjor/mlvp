@@ -10,10 +10,11 @@ import { FileDropZone } from "./components/FileDropZone";
 import { VideoDisplayArea } from "./components/VideoDisplayArea";
 import { YouTubeSubtitlePanel } from "./components/YouTubeSubtitlePanel";
 import { AudioRecordingControls } from "./components/AudioRecordingControls";
-import { CachedPlayerData, CachedSubtitleTrack, SubtitleCue } from "./types";
+import { CachedPlayerData, CachedSubtitleTrack, SubtitleCue, AnkiNote } from "./types";
 import { loadPlayerData, savePlayerData, clearPlayerData } from "./utils/cacheManager";
 import { parseVttContent } from "./utils/subtitleParser";
 import { SubtitleEditorPanel } from "./components/SubtitleEditorPanel";
+import { AnkiModal } from "./components/AnkiModal";
 
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
   let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -39,6 +40,12 @@ function App() {
   const [initialCacheLoadComplete, setInitialCacheLoadComplete] = useState(false);
   const [showSubtitleEditor, setShowSubtitleEditor] = useState(false);
   const [editorCues, setEditorCues] = useState<SubtitleCue[] | null>(null);
+  const [showAnkiModal, setShowAnkiModal] = useState(false);
+  const [ankiNote, setAnkiNote] = useState<Partial<AnkiNote>>({});
+  const [ankiSettings, setAnkiSettings] = useState({
+    apiBaseUrl: 'http://localhost:8765/',
+    deckName: 'Test'
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const subtitleInputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +55,7 @@ function App() {
   const [initialSecondarySubtitleId, setInitialSecondarySubtitleId] = useState<string | null | undefined>(undefined);
   const [initialSubtitleSettings, setInitialSubtitleSettings] = useState<CachedPlayerData['subtitleSettings'] | undefined>(undefined);
   const [initialAudioSettings, setInitialAudioSettings] = useState<CachedPlayerData['audioSettings'] | undefined>(undefined);
+  const [initialAnkiSettings, setInitialAnkiSettings] = useState<CachedPlayerData['ankiSettings'] | undefined>(undefined);
 
   const videoPlayerHook = useVideoPlayer();
   const subtitleCustomizationHook = useSubtitleCustomization({
@@ -85,6 +93,7 @@ function App() {
       setInitialSecondarySubtitleId(cachedData.secondarySubtitleId);
       setInitialSubtitleSettings(cachedData.subtitleSettings); 
       setInitialAudioSettings(cachedData.audioSettings);
+      setInitialAnkiSettings(cachedData.ankiSettings);
       setBlurSecondarySubtitle(!!cachedData.subtitleSettings.blurSecondary);
       
       subtitleCustomizationHook.setSubtitlePosition(cachedData.subtitleSettings.position);
@@ -112,6 +121,14 @@ function App() {
       subtitleManagerHook.setSubtitleOffset(cachedData.subtitleSettings.offset);
       subtitleManagerHook.setSecondarySubtitle(cachedData.secondarySubtitleId ?? null);
       subtitleManagerHook.setSecondarySubtitleOffset(cachedData.subtitleSettings.secondaryOffset ?? 0);
+
+      // Restore Anki settings
+      if (cachedData.ankiSettings) {
+        setAnkiSettings({
+          apiBaseUrl: cachedData.ankiSettings.apiBaseUrl || 'http://localhost:8765/',
+          deckName: cachedData.ankiSettings.deckName || 'Test'
+        });
+      }
 
     } else {
       setIsLoading(false);
@@ -157,6 +174,7 @@ function App() {
       audioSettings: {
         dictionaryBufferSeconds: audioRecordingHook.dictionaryBufferSeconds
       },
+      ankiSettings: ankiSettings,
     };
     savePlayerData(playerData);
 
@@ -172,6 +190,8 @@ function App() {
     subtitleCustomizationHook.subtitlePosition, 
     subtitleCustomizationHook.subtitleSize,
     audioRecordingHook.dictionaryBufferSeconds,
+    blurSecondarySubtitle,
+    ankiSettings,
     debouncedSaveCurrentTime
   ]);
 
@@ -312,6 +332,16 @@ function App() {
     }
   };
 
+  // Anki handlers
+  const handleOpenAnkiModal = (note: Partial<AnkiNote>) => {
+    setAnkiNote(note);
+    setShowAnkiModal(true);
+  };
+
+  const handleAnkiSettingsChange = (apiBaseUrl: string, deckName: string) => {
+    setAnkiSettings({ apiBaseUrl, deckName });
+  };
+
   return (
     <main className="container">
       <h1>Video Player</h1>
@@ -395,6 +425,7 @@ function App() {
             onToggleBlurSecondary={setBlurSecondarySubtitle}
             captureDictionaryAudio={audioRecordingHook.captureDictionaryAudio}
             dictionaryBufferSeconds={audioRecordingHook.dictionaryBufferSeconds}
+            onOpenAnkiModal={handleOpenAnkiModal}
           />
           
           <div className="video-controls">
@@ -449,6 +480,17 @@ function App() {
               cues={editorCues}
               onCuesUpdate={handleCuesUpdate}
               onClose={() => setShowSubtitleEditor(false)}
+            />
+          )}
+
+          {showAnkiModal && (
+            <AnkiModal
+              open={showAnkiModal}
+              onClose={() => setShowAnkiModal(false)}
+              initialNote={ankiNote}
+              apiBaseUrl={ankiSettings.apiBaseUrl}
+              deckName={ankiSettings.deckName}
+              onSettingsChange={handleAnkiSettingsChange}
             />
           )}
         </>

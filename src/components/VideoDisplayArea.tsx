@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SubtitleTrack, SubtitlePosition } from '../types';
+import { SubtitleTrack, SubtitlePosition, AnkiNote } from '../types';
 import { SubtitleControls } from './SubtitleControls';
 import { PooledSubtitleOverlay } from './PooledSubtitleOverlay';
 
@@ -44,6 +44,7 @@ interface VideoDisplayAreaProps {
   onToggleBlurSecondary: (enabled: boolean) => void;
   captureDictionaryAudio?: (startTime: number, endTime: number, buffer: number) => Promise<string>;
   dictionaryBufferSeconds?: number;
+  onOpenAnkiModal?: (note: Partial<AnkiNote>) => void;
 }
 
 export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
@@ -85,6 +86,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
   onToggleBlurSecondary,
   captureDictionaryAudio,
   dictionaryBufferSeconds,
+  onOpenAnkiModal,
 }) => {
   if (!videoUrl) return null; // Should not happen if App.tsx logic is correct
 
@@ -210,6 +212,7 @@ export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({
             blurSecondary={blurSecondary}
             captureDictionaryAudio={captureDictionaryAudio}
             dictionaryBufferSeconds={dictionaryBufferSeconds}
+            onOpenAnkiModal={onOpenAnkiModal}
           />
         </div>
       </div>

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { AnkiNote } from '../types';
 
 interface JMDictEntry {
   id: number;
@@ -36,9 +37,26 @@ export interface DictionaryModalProps {
   secondarySourceText?: string;
   screenshot?: string; // Base64 data URL
   audioData?: string; // Base64 data URL for audio
+  // Anki integration props
+  onOpenAnkiModal?: (note: Partial<AnkiNote>) => void;
 }
 
-export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose, word, results, loading, error, sourceText, secondarySourceText, screenshot, audioData }) => {
+export const DictionaryModal: React.FC<DictionaryModalProps> = ({ 
+  open, 
+  onClose, 
+  word, 
+  results, 
+  loading, 
+  error, 
+  sourceText, 
+  secondarySourceText, 
+  screenshot, 
+  audioData,
+  onOpenAnkiModal
+}) => {
+  // Field mapping state
+  const [fieldMappings, setFieldMappings] = useState<Record<string, keyof AnkiNote>>({});
+
   if (!open) return null;
   
   // Helper function to copy text to clipboard
@@ -165,11 +183,161 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
     color: '#666'
   };
 
+  // Anki field dropdown component
+  const AnkiFieldDropdown: React.FC<{ contentKey: string; onCopy: () => void; content: string }> = ({ contentKey, onCopy, content }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    
+    const ankiFields: Array<{ key: keyof AnkiNote; label: string }> = [
+      { key: 'sentence', label: 'Sentence' },
+      { key: 'translation', label: 'Translation' },
+      { key: 'targetWord', label: 'Target Word' },
+      { key: 'definitions', label: 'Definitions' }
+    ];
+
+    const handleFieldSelect = (field: keyof AnkiNote) => {
+      setFieldMappings(prev => ({ ...prev, [contentKey]: field }));
+      setIsOpen(false);
+      // Auto-copy to clipboard when field is selected
+      copyToClipboard(content);
+    };
+
+    return (
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <button 
+          style={{
+            ...copyButtonStyle,
+            backgroundColor: fieldMappings[contentKey] ? '#e8f5e8' : '#f0f0f0',
+            color: fieldMappings[contentKey] ? '#2e7d32' : '#666'
+          }}
+          onClick={onCopy}
+          title="Copy to clipboard"
+        >
+          📋
+        </button>
+        <button
+          style={{
+            ...copyButtonStyle,
+            marginLeft: '2px',
+            backgroundColor: '#e3f2fd',
+            color: '#1976d2'
+          }}
+          onClick={() => setIsOpen(!isOpen)}
+          title="Set Anki field"
+        >
+          📚▼
+        </button>
+        {isOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            backgroundColor: 'white',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            zIndex: 1000,
+            minWidth: '120px'
+          }}>
+            {ankiFields.map(field => (
+              <button
+                key={field.key}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '6px 12px',
+                  border: 'none',
+                  backgroundColor: fieldMappings[contentKey] === field.key ? '#e8f5e8' : 'white',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+                onClick={() => handleFieldSelect(field.key)}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = fieldMappings[contentKey] === field.key ? '#e8f5e8' : 'white'}
+              >
+                {field.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Generate Anki note from current mappings
+  const generateAnkiNote = (): Partial<AnkiNote> => {
+    const note: Partial<AnkiNote> = {};
+    
+    Object.entries(fieldMappings).forEach(([contentKey, field]) => {
+      let content = '';
+      switch (contentKey) {
+        case 'sourceText':
+          content = sourceText || '';
+          break;
+        case 'secondarySourceText':
+          content = secondarySourceText || '';
+          break;
+        case 'word':
+          content = word;
+          break;
+        case 'meanings':
+          // Get meanings from first result
+          if (results.length > 0) {
+            const entry = results[0];
+            const englishSenses = entry.sense.filter(sense => 
+              sense.gloss.some(g => g.lang === 'eng' || !g.lang)
+            );
+            content = englishSenses.map(sense => 
+              sense.gloss.filter(g => g.lang === 'eng' || !g.lang)
+                .map(gloss => gloss.text).join(', ')
+            ).join('; ');
+          }
+          break;
+        case 'kanji':
+          if (results.length > 0 && results[0].kanji) {
+            content = results[0].kanji.map(k => k.text).join(', ');
+          }
+          break;
+        case 'reading':
+          if (results.length > 0) {
+            content = results[0].kana.map(k => k.text).join(', ');
+          }
+          break;
+      }
+      if (content) {
+        note[field] = content;
+      }
+    });
+
+    return note;
+  };
+
   return (
     <div style={backdropStyle} onClick={onClose}>
       <div style={modalStyle} onClick={e => e.stopPropagation()}>
         <h2>Dictionary Lookup: <span style={{color: '#0066cc'}}>{word}</span></h2>
         <button style={closeButtonStyle} onClick={onClose}>×</button>
+        
+        {/* Add to Anki button */}
+        {onOpenAnkiModal && Object.keys(fieldMappings).length > 0 && (
+          <div style={{ marginBottom: '12px', textAlign: 'right' }}>
+            <button
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#4caf50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+              onClick={() => onOpenAnkiModal(generateAnkiNote())}
+              title="Open Anki modal with mapped fields"
+            >
+              📚 Add to Anki
+            </button>
+          </div>
+        )}
         
         {/* Audio */}
         {audioData && (
@@ -182,13 +350,11 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
           }}>
             <div style={{fontSize: '14px', color: '#666', marginBottom: '8px'}}>
               Sentence audio:
-              <button 
-                style={copyButtonStyle}
-                onClick={() => copyAudioToClipboard(audioData)}
-                title="Copy audio data URL"
-              >
-                📋
-              </button>
+              <AnkiFieldDropdown 
+                contentKey="audioData" 
+                onCopy={() => copyAudioToClipboard(audioData)} 
+                content={audioData}
+              />
               <button 
                 style={{...copyButtonStyle, marginLeft: '4px'}}
                 onClick={() => copyAudioAsHtml(audioData)}
@@ -221,13 +387,11 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
           }}>
             <div style={{fontSize: '14px', color: '#666', marginBottom: '8px'}}>
               Video frame:
-              <button 
-                style={copyButtonStyle}
-                onClick={() => copyImageToClipboard(screenshot)}
-                title="Copy screenshot"
-              >
-                📋
-              </button>
+              <AnkiFieldDropdown 
+                contentKey="screenshot" 
+                onCopy={() => copyImageToClipboard(screenshot)} 
+                content="[Screenshot]"
+              />
             </div>
             <img 
               src={screenshot} 
@@ -253,13 +417,11 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
           }}>
             <div style={{fontSize: '14px', color: '#666', marginBottom: '4px'}}>
               Primary subtitle:
-              <button 
-                style={copyButtonStyle}
-                onClick={() => copyToClipboard(sourceText)}
-                title="Copy primary subtitle"
-              >
-                📋
-              </button>
+              <AnkiFieldDropdown 
+                contentKey="sourceText" 
+                onCopy={() => copyToClipboard(sourceText)} 
+                content={sourceText}
+              />
             </div>
             <div style={{fontSize: '16px', lineHeight: '1.4'}}>
               {highlightWordInText(sourceText, word)}
@@ -278,13 +440,11 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
           }}>
             <div style={{fontSize: '14px', color: '#666', marginBottom: '4px'}}>
               Secondary subtitle:
-              <button 
-                style={copyButtonStyle}
-                onClick={() => copyToClipboard(secondarySourceText)}
-                title="Copy secondary subtitle"
-              >
-                📋
-              </button>
+              <AnkiFieldDropdown 
+                contentKey="secondarySourceText" 
+                onCopy={() => copyToClipboard(secondarySourceText)} 
+                content={secondarySourceText}
+              />
             </div>
             <div style={{fontSize: '16px', lineHeight: '1.4'}}>
               {highlightWordInText(secondarySourceText, word)}
@@ -330,13 +490,11 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
                           {i < entry.kanji!.length - 1 ? ', ' : ''}
                         </span>
                       ))}
-                      <button 
-                        style={copyButtonStyle}
-                        onClick={() => copyToClipboard(entry.kanji!.map(k => k.text).join(', '))}
-                        title="Copy kanji"
-                      >
-                        📋
-                      </button>
+                      <AnkiFieldDropdown 
+                        contentKey="kanji" 
+                        onCopy={() => copyToClipboard(entry.kanji!.map(k => k.text).join(', '))} 
+                        content={entry.kanji!.map(k => k.text).join(', ')}
+                      />
                     </div>
                   )}
                   
@@ -353,13 +511,11 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
                         {i < entry.kana.length - 1 ? ', ' : ''}
                       </span>
                     ))}
-                    <button 
-                      style={copyButtonStyle}
-                      onClick={() => copyToClipboard(entry.kana.map(k => k.text).join(', '))}
-                      title="Copy reading"
-                    >
-                      📋
-                    </button>
+                    <AnkiFieldDropdown 
+                      contentKey="reading" 
+                      onCopy={() => copyToClipboard(entry.kana.map(k => k.text).join(', '))} 
+                      content={entry.kana.map(k => k.text).join(', ')}
+                    />
                   </div>
                   
                   {/* Meanings - Only English */}
@@ -383,13 +539,11 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({ open, onClose,
                           )}
                           <div style={{marginLeft: '8px', display: 'flex', alignItems: 'center'}}>
                             <span style={{flex: 1}}>{meaningText}</span>
-                            <button 
-                              style={copyButtonStyle}
-                              onClick={() => copyToClipboard(meaningText)}
-                              title="Copy meanings"
-                            >
-                              📋
-                            </button>
+                            <AnkiFieldDropdown 
+                              contentKey={`meanings-${senseIndex}`} 
+                              onCopy={() => copyToClipboard(meaningText)} 
+                              content={meaningText}
+                            />
                           </div>
                         </div>
                       );

@@ -45,6 +45,18 @@ export interface CachedAudioSettings {
   dictionaryBufferSeconds: number;
 }
 
+export interface CachedAnkiSettings {
+  apiBaseUrl: string;
+  deckName: string;
+}
+
+export interface AnkiNote {
+  sentence: string;
+  translation: string;
+  targetWord: string;
+  definitions: string;
+}
+
 export interface CachedPlayerData {
   videoFileIdentifier: string | null; // Could be fileName for local files
   lastCurrentTime: number;
@@ -53,5 +65,6 @@ export interface CachedPlayerData {
   secondarySubtitleId?: string | null;
   subtitleSettings: CachedSubtitleSettings;
   audioSettings?: CachedAudioSettings;
+  ankiSettings?: CachedAnkiSettings;
   // We can add more here, like volume, playback rate, etc. in the future
 } 
