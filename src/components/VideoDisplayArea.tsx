@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SubtitleTrack, SubtitlePosition, AnkiNote, SubtitleCue } from '../types';
+import { SubtitleTrack, SubtitlePosition, AnkiNoteWithMedia, SubtitleCue } from '../types';
 import { SubtitleControls } from './SubtitleControls';
 import { PooledSubtitleOverlay } from './PooledSubtitleOverlay';
 import { VideoJSPlayer } from './VideoJSPlayer';
@@ -49,7 +49,7 @@ interface VideoDisplayAreaProps {
   onSeek?: (time: number) => void;
   captureDictionaryAudio?: (startTime: number, endTime: number, buffer: number) => Promise<string>;
   dictionaryBufferSeconds?: number;
-  onOpenAnkiModal?: (note: Partial<AnkiNote>) => void;
+  onOpenAnkiModal?: (noteWithMedia: AnkiNoteWithMedia) => void;
 }
 
 export const VideoDisplayArea: React.FC<VideoDisplayAreaProps> = ({

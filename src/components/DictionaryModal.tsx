@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AnkiNote, SubtitleCue } from '../types';
+import { AnkiNote, AnkiNoteWithMedia, SubtitleCue } from '../types';
 
 interface JMDictEntry {
   id: number;
@@ -41,7 +41,7 @@ export interface DictionaryModalProps {
   screenshot?: string; // Base64 data URL
   audioData?: string; // Base64 data URL for audio
   // Anki integration props
-  onOpenAnkiModal?: (note: Partial<AnkiNote>) => void;
+  onOpenAnkiModal?: (noteWithMedia: AnkiNoteWithMedia) => void;
 }
 
 export const DictionaryModal: React.FC<DictionaryModalProps> = ({ 
@@ -481,7 +481,7 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
                 cursor: 'pointer',
                 fontSize: '14px'
               }}
-              onClick={() => onOpenAnkiModal(generateAnkiNote())}
+              onClick={() => onOpenAnkiModal({ note: generateAnkiNote(), screenshot, audioData })}
               title="Open Anki modal with mapped fields"
             >
               📚 Add to Anki

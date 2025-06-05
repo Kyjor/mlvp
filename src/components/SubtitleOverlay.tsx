@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { SubtitleCue, SubtitlePosition, AnkiNote } from '../types';
+import React, { useEffect, useState, useRef } from 'react';
+import { SubtitleCue, SubtitlePosition, AnkiNote, AnkiNoteWithMedia } from '../types';
 import { filterParentheticalText, colorizeJapaneseText } from '../utils/subtitleParser';
 import { DictionaryModal } from './DictionaryModal';
 import { lookupKanjiBeginning } from '../utils/jmdict';
@@ -14,7 +14,9 @@ interface SubtitleOverlayProps {
   onMouseDown: (e: React.MouseEvent) => void;
   onWheel: (e: React.WheelEvent) => void;
   onCaptureAudio?: (startTime: number, endTime: number) => void;
-  onOpenAnkiModal?: (note: Partial<AnkiNote>) => void;
+  captureDictionaryAudio?: (startTime: number, endTime: number, buffer: number) => Promise<string>;
+  dictionaryBufferSeconds?: number;
+  onOpenAnkiModal?: (noteWithMedia: AnkiNoteWithMedia) => void;
 }
 
 export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
@@ -27,6 +29,8 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
   onMouseDown,
   onWheel,
   onCaptureAudio,
+  captureDictionaryAudio,
+  dictionaryBufferSeconds,
   onOpenAnkiModal,
 }) => {
   const [colorizedCues, setColorizedCues] = useState<{ cue: SubtitleCue; colorizedText: string }[]>([]);

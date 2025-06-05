@@ -55,6 +55,14 @@ export interface AnkiNote {
   translation: string;
   targetWord: string;
   definitions: string;
+  sentenceAudio?: string; // Will contain HTML reference to audio file
+  wordAudio?: string; // Will contain HTML reference to audio file
+}
+
+export interface AnkiNoteWithMedia {
+  note: Partial<AnkiNote>;
+  screenshot?: string; // Base64 data URL
+  audioData?: string; // Base64 data URL
 }
 
 export interface CachedPlayerData {

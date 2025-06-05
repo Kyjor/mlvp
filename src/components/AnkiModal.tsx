@@ -8,6 +8,8 @@ interface AnkiModalProps {
   apiBaseUrl: string;
   deckName: string;
   onSettingsChange: (apiBaseUrl: string, deckName: string) => void;
+  screenshot?: string; // Base64 data URL
+  audioData?: string; // Base64 data URL
 }
 
 export const AnkiModal: React.FC<AnkiModalProps> = ({
@@ -16,13 +18,17 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
   initialNote,
   apiBaseUrl,
   deckName,
-  onSettingsChange
+  onSettingsChange,
+  screenshot,
+  audioData
 }) => {
   const [note, setNote] = useState<AnkiNote>({
     sentence: initialNote.sentence || '',
     translation: initialNote.translation || '',
     targetWord: initialNote.targetWord || '',
-    definitions: initialNote.definitions || ''
+    definitions: initialNote.definitions || '',
+    sentenceAudio: initialNote.sentenceAudio || '',
+    wordAudio: initialNote.wordAudio || ''
   });
   
   const [localApiBaseUrl, setLocalApiBaseUrl] = useState(apiBaseUrl);
@@ -36,7 +42,9 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
       sentence: initialNote.sentence || '',
       translation: initialNote.translation || '',
       targetWord: initialNote.targetWord || '',
-      definitions: initialNote.definitions || ''
+      definitions: initialNote.definitions || '',
+      sentenceAudio: initialNote.sentenceAudio || '',
+      wordAudio: initialNote.wordAudio || ''
     });
   }, [initialNote]);
 
@@ -50,30 +58,104 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
     onSettingsChange(localApiBaseUrl, localDeckName);
   };
 
+  // Helper function to extract base64 data from data URL
+  const extractBase64Data = (dataUrl: string): string => {
+    const base64Index = dataUrl.indexOf(',');
+    return base64Index !== -1 ? dataUrl.substring(base64Index + 1) : dataUrl;
+  };
+
+  // Helper function to get file extension from data URL
+  const getFileExtension = (dataUrl: string): string => {
+    if (dataUrl.includes('image/png')) return 'png';
+    if (dataUrl.includes('image/jpeg')) return 'jpg';
+    if (dataUrl.includes('audio/wav')) return 'wav';
+    if (dataUrl.includes('audio/mp3')) return 'mp3';
+    if (dataUrl.includes('audio/ogg')) return 'ogg';
+    return 'bin'; // fallback
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setSubmitResult('');
     
     try {
-      const requestBody = {
+      // Generate unique filenames with timestamp
+      const timestamp = Date.now();
+      const screenshotFilename = screenshot ? `screenshot_${timestamp}.${getFileExtension(screenshot)}` : null;
+      const audioFilename = audioData ? `audio_${timestamp}.${getFileExtension(audioData)}` : null;
+
+      // Prepare the note fields with embedded media
+      let sentenceField = note.sentence;
+      let sentenceAudioField = note.sentenceAudio;
+      
+      // Add screenshot to sentence field if available
+      if (screenshot && screenshotFilename) {
+        sentenceField += `<br><img src="${screenshotFilename}">`;
+      }
+      
+      // Add audio to sentence audio field if available
+      if (audioData && audioFilename) {
+        sentenceAudioField = `[sound:${audioFilename}]`;
+      }
+
+      // Prepare actions array for multi action
+      const actions: any[] = [];
+
+      // Add media storage actions
+      if (screenshot && screenshotFilename) {
+        actions.push({
+          action: "storeMediaFile",
+          params: {
+            filename: screenshotFilename,
+            data: extractBase64Data(screenshot)
+          }
+        });
+      }
+
+      if (audioData && audioFilename) {
+        actions.push({
+          action: "storeMediaFile",
+          params: {
+            filename: audioFilename,
+            data: extractBase64Data(audioData)
+          }
+        });
+      }
+
+      // Add note creation action
+      actions.push({
         action: "addNote",
-        version: 6,
         params: {
           note: {
             deckName: localDeckName,
             modelName: "Migaku Japanese",
             fields: {
-              "Sentence": note.sentence,
+              "Sentence": sentenceField,
               "Translation": note.translation,
               "Target Word": note.targetWord,
-              "Definitions": note.definitions
+              "Definitions": note.definitions,
+              "Sentence Audio": sentenceAudioField,
+              "Word Audio": note.wordAudio
             },
-            "options": {
-                "allowDuplicate": true,
-                "duplicateScope": "deck"
+            options: {
+              allowDuplicate: true,
+              duplicateScope: "deck"
             }
           }
         }
+      });
+
+      // Use multi action if we have media, otherwise use single addNote action
+      const requestBody = actions.length > 1 ? {
+        action: "multi",
+        version: 6,
+        params: {
+          actions: actions
+        }
+      } : {
+        action: "addNote",
+        version: 6,
+        params: actions[0].params
       };
 
       const response = await fetch(localApiBaseUrl, {
@@ -193,6 +275,31 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
           ×
         </button>
 
+        {/* Media Preview */}
+        {(screenshot || audioData) && (
+          <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f0f8ff', borderRadius: '6px' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>Media to Include</h3>
+            
+            {screenshot && (
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Screenshot:</div>
+                <img 
+                  src={screenshot} 
+                  alt="Screenshot preview"
+                  style={{ maxWidth: '200px', height: 'auto', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+              </div>
+            )}
+            
+            {audioData && (
+              <div>
+                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Audio:</div>
+                <audio controls src={audioData} style={{ width: '100%', maxWidth: '300px' }} />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Anki Settings */}
         <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
           <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>Anki Connect Settings</h3>
@@ -234,6 +341,11 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
               style={textareaStyle}
               placeholder="Enter the sentence..."
             />
+            {screenshot && (
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                ℹ️ Screenshot will be automatically added to this field
+              </div>
+            )}
           </div>
           
           <div style={{ marginBottom: '12px' }}>
@@ -264,6 +376,33 @@ export const AnkiModal: React.FC<AnkiModalProps> = ({
               onChange={(e) => handleFieldChange('definitions', e.target.value)}
               style={textareaStyle}
               placeholder="Enter the definitions..."
+            />
+          </div>
+
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Sentence Audio:</label>
+            <input
+              type="text"
+              value={note.sentenceAudio}
+              onChange={(e) => handleFieldChange('sentenceAudio', e.target.value)}
+              style={inputStyle}
+              placeholder="Additional audio reference (optional)..."
+            />
+            {audioData && (
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                ℹ️ Captured audio will be automatically added to this field
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Word Audio:</label>
+            <input
+              type="text"
+              value={note.wordAudio}
+              onChange={(e) => handleFieldChange('wordAudio', e.target.value)}
+              style={inputStyle}
+              placeholder="Word-specific audio reference (optional)..."
             />
           </div>
         </div>

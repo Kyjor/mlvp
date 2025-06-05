@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { SubtitlePosition, AnkiNote, SubtitleCue } from '../types';
+import { SubtitlePosition, AnkiNote, SubtitleCue, AnkiNoteWithMedia } from '../types';
 import { useSubtitlePool } from '../contexts/SubtitlePoolContext';
 import { filterParentheticalText } from '../utils/subtitleParser';
 import { DictionaryModal } from './DictionaryModal';
@@ -23,7 +23,7 @@ interface PooledSubtitleOverlayProps {
   onCaptureAudio?: (startTime: number, endTime: number) => void;
   captureDictionaryAudio?: (startTime: number, endTime: number, buffer: number) => Promise<string>;
   dictionaryBufferSeconds?: number;
-  onOpenAnkiModal?: (note: Partial<AnkiNote>) => void;
+  onOpenAnkiModal?: (noteWithMedia: AnkiNoteWithMedia) => void;
   subtitleData: Map<string, SubtitleCue[]>;
 }
 

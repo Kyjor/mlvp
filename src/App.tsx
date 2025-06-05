@@ -10,7 +10,7 @@ import { FileDropZone } from "./components/FileDropZone";
 import { VideoDisplayArea } from "./components/VideoDisplayArea";
 import { YouTubeSubtitlePanel } from "./components/YouTubeSubtitlePanel";
 import { AudioRecordingControls } from "./components/AudioRecordingControls";
-import { CachedPlayerData, CachedSubtitleTrack, SubtitleCue, AnkiNote } from "./types";
+import { CachedPlayerData, CachedSubtitleTrack, SubtitleCue, AnkiNote, AnkiNoteWithMedia } from "./types";
 import { loadPlayerData, savePlayerData, clearPlayerData } from "./utils/cacheManager";
 import { parseVttContent } from "./utils/subtitleParser";
 import { SubtitleEditorPanel } from "./components/SubtitleEditorPanel";
@@ -42,6 +42,8 @@ function App() {
   const [editorCues, setEditorCues] = useState<SubtitleCue[] | null>(null);
   const [showAnkiModal, setShowAnkiModal] = useState(false);
   const [ankiNote, setAnkiNote] = useState<Partial<AnkiNote>>({});
+  const [ankiScreenshot, setAnkiScreenshot] = useState<string | undefined>(undefined);
+  const [ankiAudioData, setAnkiAudioData] = useState<string | undefined>(undefined);
   const [ankiSettings, setAnkiSettings] = useState({
     apiBaseUrl: 'http://localhost:8765/',
     deckName: 'Test'
@@ -348,8 +350,10 @@ function App() {
   };
 
   // Anki handlers
-  const handleOpenAnkiModal = (note: Partial<AnkiNote>) => {
-    setAnkiNote(note);
+  const handleOpenAnkiModal = (noteWithMedia: AnkiNoteWithMedia) => {
+    setAnkiNote(noteWithMedia.note);
+    setAnkiScreenshot(noteWithMedia.screenshot);
+    setAnkiAudioData(noteWithMedia.audioData);
     setShowAnkiModal(true);
   };
 
@@ -511,6 +515,8 @@ function App() {
               apiBaseUrl={ankiSettings.apiBaseUrl}
               deckName={ankiSettings.deckName}
               onSettingsChange={handleAnkiSettingsChange}
+              screenshot={ankiScreenshot}
+              audioData={ankiAudioData}
             />
           )}
         </>
