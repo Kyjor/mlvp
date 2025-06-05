@@ -85,6 +85,7 @@ function App() {
       setInitialSecondarySubtitleId(cachedData.secondarySubtitleId);
       setInitialSubtitleSettings(cachedData.subtitleSettings); 
       setInitialAudioSettings(cachedData.audioSettings);
+      setBlurSecondarySubtitle(!!cachedData.subtitleSettings.blurSecondary);
       
       subtitleCustomizationHook.setSubtitlePosition(cachedData.subtitleSettings.position);
       subtitleCustomizationHook.setSubtitleSize(cachedData.subtitleSettings.size);
@@ -151,6 +152,7 @@ function App() {
         size: subtitleCustomizationHook.subtitleSize,
         offset: subtitleManagerHook.subtitleOffset,
         secondaryOffset: subtitleManagerHook.secondarySubtitleOffset ?? 0,
+        blurSecondary: blurSecondarySubtitle,
       },
       audioSettings: {
         dictionaryBufferSeconds: audioRecordingHook.dictionaryBufferSeconds

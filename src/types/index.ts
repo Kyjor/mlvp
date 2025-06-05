@@ -38,6 +38,7 @@ export interface CachedSubtitleSettings {
   size: number;
   offset: number;
   secondaryOffset?: number;
+  blurSecondary?: boolean;
 }
 
 export interface CachedAudioSettings {
