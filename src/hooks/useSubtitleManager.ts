@@ -20,6 +20,8 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
         label: cachedTrack.label,
         src: cachedTrack.src,
         default: false,
+        language: '',
+        cues: [],
       }));
     }
     return [];
@@ -124,7 +126,9 @@ export const useSubtitleManager = (currentTime: number, props?: UseSubtitleManag
           id: trackId,
           label: file.name,
           src: `data:text/vtt;charset=utf-8,${encodeURIComponent(vttContent)}`,
-          default: newTracks.length === 0 && subtitleTracks.length === 0
+          default: newTracks.length === 0 && subtitleTracks.length === 0,
+          language: '',
+          cues: [],
         };
 
         newTracks.push(track);

@@ -481,7 +481,16 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
                 cursor: 'pointer',
                 fontSize: '14px'
               }}
-              onClick={() => onOpenAnkiModal({ note: generateAnkiNote(), screenshot, audioData })}
+              onClick={() => onOpenAnkiModal({
+                sentence: generateAnkiNote().sentence ?? "",
+                translation: generateAnkiNote().translation ?? "",
+                targetWord: generateAnkiNote().targetWord ?? "",
+                definitions: generateAnkiNote().definitions ?? "",
+                sentenceAudio: generateAnkiNote().sentenceAudio,
+                wordAudio: generateAnkiNote().wordAudio,
+                screenshot,
+                audioData
+              })}
               title="Open Anki modal with mapped fields"
             >
               📚 Add to Anki

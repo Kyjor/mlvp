@@ -39,6 +39,8 @@ export const useSubtitleCustomization = (props?: UseSubtitleCustomizationProps) 
       isDragging: true,
       startX: event.clientX,
       startY: event.clientY,
+      currentX: event.clientX,
+      currentY: event.clientY,
       initialX: rect.left - wrapperRect.left, // Position relative to wrapper
       initialY: rect.top - wrapperRect.top,
       initialWidth: rect.width,

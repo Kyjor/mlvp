@@ -82,7 +82,7 @@ function App() {
       console.log("Found cached data:", cachedData);
       if (cachedData.videoFileIdentifier) {
         setCachedVideoFileIdentifier(cachedData.videoFileIdentifier);
-        setCachedSeekTime(cachedData.lastCurrentTime);
+        setCachedSeekTime(cachedData.lastCurrentTime ?? null);
         setLoadingMessage(`Found saved session for ${cachedData.videoFileIdentifier}. Please re-select the video file to restore progress.`);
         setIsLoading(false);
       } else {
@@ -90,8 +90,8 @@ function App() {
         setIsLoading(false); 
       }
       setInitialSubtitleTracks(cachedData.subtitleTracks);
-      setInitialActiveSubtitleId(cachedData.activeSubtitleId);
-      setInitialSecondarySubtitleId(cachedData.secondarySubtitleId);
+      setInitialActiveSubtitleId(cachedData.activeSubtitleId ?? null);
+      setInitialSecondarySubtitleId(cachedData.secondarySubtitleId ?? null);
       setInitialSubtitleSettings(cachedData.subtitleSettings); 
       setInitialAudioSettings(cachedData.audioSettings);
       setBlurSecondarySubtitle(!!cachedData.subtitleSettings.blurSecondary);
@@ -99,10 +99,12 @@ function App() {
       subtitleCustomizationHook.setSubtitlePosition(cachedData.subtitleSettings.position);
       subtitleCustomizationHook.setSubtitleSize(cachedData.subtitleSettings.size);
       subtitleManagerHook.setSubtitleTracks(cachedData.subtitleTracks.map(ct => ({
-        id: ct.id, 
-        label: ct.label, 
-        src: ct.src,
-        default: false
+        id: ct.id,
+        label: ct.label,
+        src: ct.src ?? '',
+        default: false,
+        language: ct.language ?? '',
+        cues: ct.cues ?? []
       })));
       const initialMap = new Map<string, SubtitleCue[]>();
       cachedData.subtitleTracks.forEach(cachedTrack => {
@@ -117,7 +119,7 @@ function App() {
         }
       });
       subtitleManagerHook.setSubtitleData(initialMap);
-      subtitleManagerHook.setActiveSubtitle(cachedData.activeSubtitleId);
+      subtitleManagerHook.setActiveSubtitle(cachedData.activeSubtitleId ?? null);
       subtitleManagerHook.setSubtitleOffset(cachedData.subtitleSettings.offset);
       subtitleManagerHook.setSecondarySubtitle(cachedData.secondarySubtitleId ?? null);
       subtitleManagerHook.setSecondarySubtitleOffset(cachedData.subtitleSettings.secondaryOffset ?? 0);
@@ -155,15 +157,18 @@ function App() {
     }
 
     const playerData: CachedPlayerData = {
+      currentTime: videoPlayerHook.currentTime ?? 0,
       videoFileIdentifier: videoPlayerHook.fileName,
-      lastCurrentTime: videoPlayerHook.currentTime,
+      lastCurrentTime: videoPlayerHook.currentTime ?? 0,
       subtitleTracks: subtitleManagerHook.subtitleTracks.map(st => ({
         id: st.id,
         label: st.label,
-        src: st.src
+        src: st.src ?? '',
+        language: st.language ?? '',
+        cues: st.cues ?? [],
       })),
-      activeSubtitleId: subtitleManagerHook.activeSubtitle,
-      secondarySubtitleId: subtitleManagerHook.secondarySubtitle,
+      activeSubtitleId: subtitleManagerHook.activeSubtitle || undefined,
+      secondarySubtitleId: subtitleManagerHook.secondarySubtitle || undefined,
       subtitleSettings: {
         position: subtitleCustomizationHook.subtitlePosition,
         size: subtitleCustomizationHook.subtitleSize,
@@ -172,6 +177,8 @@ function App() {
         blurSecondary: blurSecondarySubtitle,
       },
       audioSettings: {
+        volume: (audioRecordingHook as any).volume ?? 1,
+        muted: (audioRecordingHook as any).muted ?? false,
         dictionaryBufferSeconds: audioRecordingHook.dictionaryBufferSeconds
       },
       ankiSettings: ankiSettings,
@@ -351,7 +358,7 @@ function App() {
 
   // Anki handlers
   const handleOpenAnkiModal = (noteWithMedia: AnkiNoteWithMedia) => {
-    setAnkiNote(noteWithMedia.note);
+    setAnkiNote(noteWithMedia.note ?? {});
     setAnkiScreenshot(noteWithMedia.screenshot);
     setAnkiAudioData(noteWithMedia.audioData);
     setShowAnkiModal(true);

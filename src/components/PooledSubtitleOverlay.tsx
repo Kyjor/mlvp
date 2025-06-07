@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { SubtitlePosition, AnkiNote, SubtitleCue, AnkiNoteWithMedia } from '../types';
+import { SubtitlePosition, SubtitleCue, AnkiNoteWithMedia } from '../types';
 import { useSubtitlePool } from '../contexts/SubtitlePoolContext';
 import { filterParentheticalText } from '../utils/subtitleParser';
 import { DictionaryModal } from './DictionaryModal';
