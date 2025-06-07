@@ -36,6 +36,14 @@ export interface CachedSubtitleTrack extends SubtitleTrack {
   src: string;
 }
 
+export interface AudioTrack {
+  id: string;
+  label: string;
+  language?: string;
+  enabled?: boolean;
+  kind?: string;
+}
+
 export interface SubtitlePosition {
   x: number;
   y: number;
@@ -67,6 +75,10 @@ export interface AudioSettings {
   dictionaryBufferSeconds?: number;
 }
 
+export interface AudioTrackSettings {
+  activeAudioTrackId?: string;
+}
+
 export interface AnkiSettings {
   apiBaseUrl: string;
   deckName: string;
@@ -82,5 +94,6 @@ export interface CachedPlayerData {
   secondarySubtitleId?: string;
   subtitleSettings: SubtitleSettings;
   audioSettings: AudioSettings;
+  audioTrackSettings?: AudioTrackSettings;
   ankiSettings?: AnkiSettings;
 } 

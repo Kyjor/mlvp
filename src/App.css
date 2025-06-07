@@ -1729,3 +1729,197 @@ button {
     color: #636e72;
   }
 }
+
+/* Audio Track Controls */
+.audio-track-panel {
+  position: absolute;
+  top: 50px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 0;
+  min-width: 280px;
+  max-width: 350px;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.audio-track-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px 12px 0 0;
+}
+
+.audio-track-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.audio-track-header .close-button {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.audio-track-header .close-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.audio-track-list {
+  padding: 10px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.audio-track-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.audio-track-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.audio-track-item.active {
+  background: rgba(100, 150, 255, 0.15);
+  border-left-color: #6699ff;
+}
+
+.audio-track-item.active:hover {
+  background: rgba(100, 150, 255, 0.2);
+}
+
+.audio-track-info {
+  flex: 1;
+}
+
+.audio-track-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.audio-track-kind {
+  font-size: 12px;
+  color: #cccccc;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.audio-track-status {
+  margin-left: 15px;
+}
+
+.track-indicator {
+  font-size: 12px;
+  color: #999999;
+  transition: color 0.2s ease;
+}
+
+.track-indicator.active {
+  color: #6699ff;
+  font-weight: bold;
+}
+
+.audio-track-info-text {
+  padding: 15px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0 0 12px 12px;
+}
+
+.audio-track-info-text p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #cccccc;
+  line-height: 1.4;
+}
+
+.audio-track-info-text p:last-child {
+  margin-bottom: 0;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+/* Responsive adjustments for audio track panel */
+@media (max-width: 768px) {
+  .audio-track-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    right: auto;
+    min-width: 300px;
+    max-width: 90vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .audio-track-panel {
+    min-width: 280px;
+    max-width: 95vw;
+  }
+  
+  .audio-track-header {
+    padding: 12px 15px;
+  }
+  
+  .audio-track-item {
+    padding: 10px 15px;
+  }
+  
+  .audio-track-info-text {
+    padding: 12px 15px;
+  }
+}
+
+/* Dark mode adjustments for audio track controls */
+@media (prefers-color-scheme: dark) {
+  .audio-track-panel {
+    background: rgba(20, 20, 20, 0.95);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .audio-track-header {
+    background: rgba(255, 255, 255, 0.08);
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+  }
+  
+  .audio-track-item.active {
+    background: rgba(100, 150, 255, 0.2);
+  }
+  
+  .audio-track-item.active:hover {
+    background: rgba(100, 150, 255, 0.25);
+  }
+  
+  .audio-track-info-text {
+    background: rgba(255, 255, 255, 0.03);
+    border-top-color: rgba(255, 255, 255, 0.12);
+  }
+}

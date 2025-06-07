@@ -12,6 +12,7 @@ settingGroups:
     base:
       PRODUCT_NAME: mlvp
       PRODUCT_BUNDLE_IDENTIFIER: com.mlvp.app
+      DEVELOPMENT_TEAM: AKG5NATH99
 targetTemplates:
   app:
     type: application

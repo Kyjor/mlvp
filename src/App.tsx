@@ -5,11 +5,13 @@ import { isVideoFile, isSubtitleFile } from "./utils/fileUtils";
 import { useVideoPlayer } from "./hooks/useVideoPlayer";
 import { useSubtitleManager } from "./hooks/useSubtitleManager";
 import { useAudioRecording } from "./hooks/useAudioRecording";
+import { useAudioTrackManager } from "./hooks/useAudioTrackManager";
 import { SubtitlePoolProvider } from "./contexts/SubtitlePoolContext";
 import { FileDropZone } from "./components/FileDropZone";
 import { VideoDisplayArea } from "./components/VideoDisplayArea";
 import { YouTubeSubtitlePanel } from "./components/YouTubeSubtitlePanel";
 import { AudioRecordingControls } from "./components/AudioRecordingControls";
+import { AudioTrackControls } from "./components/AudioTrackControls";
 import { CachedPlayerData, CachedSubtitleTrack, SubtitleCue, AnkiNote, AnkiNoteWithMedia } from "./types";
 import { loadPlayerData, savePlayerData, clearPlayerData } from "./utils/cacheManager";
 import { parseVttContent } from "./utils/subtitleParser";
@@ -34,6 +36,7 @@ function App() {
   const [loadingMessage, setLoadingMessage] = useState("Checking for saved session...");
   const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
   const [showAudioRecording, setShowAudioRecording] = useState(false);
+  const [showAudioTrackPanel, setShowAudioTrackPanel] = useState(false);
   const [blurSecondarySubtitle, setBlurSecondarySubtitle] = useState(false);
   const [cachedVideoFileIdentifier, setCachedVideoFileIdentifier] = useState<string | null>(null);
   const [cachedSeekTime, setCachedSeekTime] = useState<number | null>(null);
@@ -57,6 +60,7 @@ function App() {
   const [initialSecondarySubtitleId, setInitialSecondarySubtitleId] = useState<string | null | undefined>(undefined);
   const [initialSubtitleSettings, setInitialSubtitleSettings] = useState<CachedPlayerData['subtitleSettings'] | undefined>(undefined);
   const [initialAudioSettings, setInitialAudioSettings] = useState<CachedPlayerData['audioSettings'] | undefined>(undefined);
+  const [initialAudioTrackSettings, setInitialAudioTrackSettings] = useState<CachedPlayerData['audioTrackSettings'] | undefined>(undefined);
 
   const videoPlayerHook = useVideoPlayer();
   const subtitleCustomizationHook = useSubtitleCustomization({
@@ -75,6 +79,24 @@ function App() {
     bufferDurationSeconds: 30,
     initialDictionaryBuffer: initialAudioSettings?.dictionaryBufferSeconds || 0
   });
+  const audioTrackManagerHook = useAudioTrackManager({
+    videoRef: videoPlayerHook.videoRef,
+    initialActiveTrackId: initialAudioTrackSettings?.activeAudioTrackId
+  });
+
+  // Debug effect for audio track manager
+  useEffect(() => {
+    console.log('[App] Audio Track Manager State:', {
+      audioTracks: audioTrackManagerHook.audioTracks,
+      activeAudioTrack: audioTrackManagerHook.activeAudioTrack,
+      isSupported: audioTrackManagerHook.isSupported,
+      buttonShouldBeEnabled: audioTrackManagerHook.isSupported
+    });
+  }, [
+    audioTrackManagerHook.audioTracks,
+    audioTrackManagerHook.activeAudioTrack,
+    audioTrackManagerHook.isSupported
+  ]);
 
   useEffect(() => {
     const cachedData = loadPlayerData();
@@ -94,6 +116,7 @@ function App() {
       setInitialSecondarySubtitleId(cachedData.secondarySubtitleId ?? null);
       setInitialSubtitleSettings(cachedData.subtitleSettings); 
       setInitialAudioSettings(cachedData.audioSettings);
+      setInitialAudioTrackSettings(cachedData.audioTrackSettings);
       setBlurSecondarySubtitle(!!cachedData.subtitleSettings.blurSecondary);
       
       subtitleCustomizationHook.setSubtitlePosition(cachedData.subtitleSettings.position);
@@ -181,6 +204,9 @@ function App() {
         muted: (audioRecordingHook as any).muted ?? false,
         dictionaryBufferSeconds: audioRecordingHook.dictionaryBufferSeconds
       },
+      audioTrackSettings: {
+        activeAudioTrackId: audioTrackManagerHook.activeAudioTrack || undefined
+      },
       ankiSettings: ankiSettings,
     };
     savePlayerData(playerData);
@@ -197,6 +223,7 @@ function App() {
     subtitleCustomizationHook.subtitlePosition, 
     subtitleCustomizationHook.subtitleSize,
     audioRecordingHook.dictionaryBufferSeconds,
+    audioTrackManagerHook.activeAudioTrack,
     blurSecondarySubtitle,
     ankiSettings,
     debouncedSaveCurrentTime
@@ -368,6 +395,15 @@ function App() {
     setAnkiSettings({ apiBaseUrl, deckName });
   };
 
+  const handleAudioTrackButtonClick = () => {
+    console.log('[App] Audio Track button clicked');
+    console.log('[App] Current showAudioTrackPanel:', showAudioTrackPanel);
+    console.log('[App] Audio track manager isSupported:', audioTrackManagerHook.isSupported);
+    console.log('[App] Available audio tracks:', audioTrackManagerHook.audioTracks);
+    setShowAudioTrackPanel(!showAudioTrackPanel);
+    console.log('[App] Setting showAudioTrackPanel to:', !showAudioTrackPanel);
+  };
+
   return (
     <main className="container">
       <h1>Video Player</h1>
@@ -469,6 +505,12 @@ function App() {
             <button onClick={() => setShowAudioRecording(!showAudioRecording)}>
               Audio Recording
             </button>
+            <button 
+              onClick={handleAudioTrackButtonClick}
+              disabled={!audioTrackManagerHook.isSupported}
+            >
+              Audio Tracks
+            </button>
             <button onClick={openSubtitleEditor}
               disabled={!subtitleManagerHook.activeSubtitle || !getActiveSubtitleCues()}
             >
@@ -503,6 +545,17 @@ function App() {
               onSetBufferDuration={audioRecordingHook.setBufferDuration}
               onSetDictionaryBufferSeconds={audioRecordingHook.setDictionaryBufferSeconds}
               onClearError={audioRecordingHook.clearError}
+            />
+          )}
+
+          {showAudioTrackPanel && (
+            <AudioTrackControls
+              audioTracks={audioTrackManagerHook.audioTracks}
+              activeAudioTrack={audioTrackManagerHook.activeAudioTrack}
+              isSupported={audioTrackManagerHook.isSupported}
+              onSwitchAudioTrack={audioTrackManagerHook.switchAudioTrack}
+              isVisible={showAudioTrackPanel}
+              onClose={() => setShowAudioTrackPanel(false)}
             />
           )}
 
